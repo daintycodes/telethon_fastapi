@@ -1,8 +1,21 @@
 import os
 
 # Telegram API credentials
-API_ID = int(os.getenv("TG_API_ID", "YOUR_API_ID"))
-API_HASH = os.getenv("TG_API_HASH", "YOUR_API_HASH")
+API_ID_STR = os.getenv("TG_API_ID")
+if not API_ID_STR or not API_ID_STR.isdigit():
+    raise ValueError(
+        "Missing or invalid TG_API_ID environment variable. "
+        "Must be a valid integer. Set via TG_API_ID environment variable."
+    )
+API_ID = int(API_ID_STR)
+
+API_HASH = os.getenv("TG_API_HASH")
+if not API_HASH:
+    raise ValueError(
+        "Missing TG_API_HASH environment variable. "
+        "Set via TG_API_HASH environment variable."
+    )
+
 SESSION_NAME = os.getenv("TG_SESSION", "telethon_session")
 
 # S3/MinIO config

@@ -6,3 +6,7 @@ sqlalchemy
 pydantic
 python-multipart
 apscheduler
+minio
+pytest
+pytest-asyncio
+httpx

@@ -22,7 +22,24 @@ async def start_client():
     """Start Telethon client, pull historical media, and register event handlers (once per process)."""
     global _handlers_registered
     
-    await client.start()
+    # Avoid interactive prompts in non-interactive containers.
+    # If a bot token is provided via env var `TG_BOT_TOKEN` (or `TELEGRAM_BOT_TOKEN`), use it.
+    # Otherwise only start if an existing session file exists to prevent Telethon from calling input().
+    bot_token = os.getenv("TG_BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
+    session_file = f"{SESSION_NAME}.session"
+
+    if bot_token:
+        await client.start(bot_token=bot_token)
+    else:
+        if os.path.exists(session_file):
+            await client.start()
+        else:
+            logger.error(
+                "No TG_BOT_TOKEN and no existing Telethon session file found. "
+                "Skipping Telethon client start to avoid interactive prompt. "
+                "Provide a bot token via TG_BOT_TOKEN or mount a session file."
+            )
+            return
     
     if not _handlers_registered:
         register_handlers()

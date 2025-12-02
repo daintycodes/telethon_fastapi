@@ -38,6 +38,22 @@ def get_active_channels(db: Session):
     return db.query(models.Channel).filter(models.Channel.active == True).all()
 
 
+def get_all_channels(db: Session, active_only: bool = True):
+    """Get all channels with optional active filter.
+    
+    Args:
+        db: Database session.
+        active_only: If True, only return active channels (default True).
+        
+    Returns:
+        list[Channel]: List of channels.
+    """
+    query = db.query(models.Channel)
+    if active_only:
+        query = query.filter(models.Channel.active == True)
+    return query.all()
+
+
 def get_channel_by_username(db: Session, username: str) -> Optional[models.Channel]:
     """Get a channel by username.
     

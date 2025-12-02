@@ -10,7 +10,6 @@ from ..auth import require_admin
 router = APIRouter(prefix="/api", tags=["channels"])
 
 
-def add_channel(username: str, db: Session = Depends(get_db)):
 @router.post("/channels/")
 def add_channel(username: str, db: Session = Depends(get_db), _=Depends(require_admin)):
     """Add a new Telegram channel to monitor.
@@ -41,7 +40,6 @@ def list_channels(db: Session = Depends(get_db)):
     """
     return crud.get_active_channels(db)
 
-def list_all_channels(db: Session = Depends(get_db)):
 @router.get("/channels/all")
 def list_all_channels(db: Session = Depends(get_db), _=Depends(require_admin)):
     """List all channels including inactive ones."""

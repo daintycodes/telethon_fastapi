@@ -18,6 +18,12 @@ if not API_HASH:
 
 SESSION_NAME = os.getenv("TG_SESSION", "telethon_session")
 
+# Optional admin API key for protecting admin endpoints
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
+
+# Optional Sentry DSN for error monitoring
+SENTRY_DSN = os.getenv("SENTRY_DSN")
+
 # S3/MinIO config
 S3_ENDPOINT = os.getenv("S3_ENDPOINT", "http://minio:9000")
 S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "minioadmin")

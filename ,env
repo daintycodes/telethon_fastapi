@@ -10,3 +10,5 @@ S3_BUCKET_PDF=pdf
 
 DATABASE_URL=sqlite:///./telethon.db
 LOG_LEVEL=INFO
+ADMIN_API_KEY= #set this to protect admin endpoints
+SENTRY_DSN= #optional

@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 from .. import crud
 from ..database import get_db
 from ..s3 import get_presigned_url
+from ..auth import require_admin
+from .. import telethon_client
+import datetime
 
 router = APIRouter(prefix="/api", tags=["media"])
 
@@ -100,7 +103,7 @@ def get_download_url(
 
 
 @router.get("/media/pending")
-def list_pending_media(db: Session = Depends(get_db)):
+def list_pending_media(db: Session = Depends(get_db), _=Depends(require_admin)):
     """List media files that are pending approval."""
     items = crud.list_media(db, skip=0, limit=100, media_type=None, approved_only=False)
     pending = [m for m in items if not m.approved]
@@ -108,7 +111,7 @@ def list_pending_media(db: Session = Depends(get_db)):
 
 
 @router.post("/media/{media_id}/approve")
-def approve_media(media_id: int, db: Session = Depends(get_db)):
+async def approve_media(media_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
     """Mark a media file as approved.
     
     Args:
@@ -121,10 +124,32 @@ def approve_media(media_id: int, db: Session = Depends(get_db)):
     Raises:
         HTTPException: 404 if not found.
     """
-    media = crud.approve_media(db, media_id)
+    media = crud.get_media_by_id(db, media_id)
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
+
+    # Download from Telegram and upload to S3
+    try:
+        s3_key = await telethon_client.download_and_store_media(media.message_id, media.channel_username)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to download/store media: {e}")
+
+    # Update DB record
+    media.s3_key = s3_key
+    media.downloaded_at = datetime.datetime.utcnow()
+    media.approved = True
+    db.add(media)
+    db.commit()
+    db.refresh(media)
     return media
+
+
+
+@router.get("/telegram/{channel_username}/messages")
+async def preview_telegram_messages(channel_username: str, limit: int = 20, _=Depends(require_admin)):
+    """Preview recent media messages from a Telegram channel (metadata only)."""
+    items = await telethon_client.fetch_recent_channel_messages(channel_username, limit=limit)
+    return {"channel": channel_username, "items": items}
 
 
 @router.get("/media/by-channel/{channel_username}")

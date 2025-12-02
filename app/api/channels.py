@@ -5,12 +5,14 @@ from sqlalchemy.orm import Session
 
 from .. import crud, models
 from ..database import get_db
+from ..auth import require_admin
 
 router = APIRouter(prefix="/api", tags=["channels"])
 
 
-@router.post("/channels/")
 def add_channel(username: str, db: Session = Depends(get_db)):
+@router.post("/channels/")
+def add_channel(username: str, db: Session = Depends(get_db), _=Depends(require_admin)):
     """Add a new Telegram channel to monitor.
     
     Args:
@@ -39,13 +41,14 @@ def list_channels(db: Session = Depends(get_db)):
     """
     return crud.get_active_channels(db)
 
-@router.get("/channels/all")
 def list_all_channels(db: Session = Depends(get_db)):
+@router.get("/channels/all")
+def list_all_channels(db: Session = Depends(get_db), _=Depends(require_admin)):
     """List all channels including inactive ones."""
     return db.query(models.Channel).order_by(models.Channel.id.asc()).all()
 
 @router.delete("/channels/{channel_id}")
-def delete_channel(channel_id: int, db: Session = Depends(get_db)):
+def delete_channel(channel_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
     """Delete (or deactivate) a channel by ID."""
     channel = db.query(models.Channel).filter(models.Channel.id == channel_id).first()
     if not channel:
@@ -58,7 +61,7 @@ def delete_channel(channel_id: int, db: Session = Depends(get_db)):
     return {"status": "deactivated", "id": channel_id}
 
 @router.patch("/channels/{channel_id}")
-def toggle_channel(channel_id: int, active: bool, db: Session = Depends(get_db)):
+def toggle_channel(channel_id: int, active: bool, db: Session = Depends(get_db), _=Depends(require_admin)):
     """Set channel active/inactive state."""
     from fastapi import HTTPException
     channel = db.query(models.Channel).filter(models.Channel.id == channel_id).first()

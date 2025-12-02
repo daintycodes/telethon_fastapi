@@ -1,17 +1,32 @@
 """FastAPI application initialization and startup/shutdown logic."""
 
 import logging
+import os
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 from .database import engine, SessionLocal
 from .models import Base
 from .api import channels, media
+from .admin import router as admin_router
 from .tasks import start_background_tasks, scheduler
 from .s3 import ensure_buckets_exist
 from .telethon_client import start_client
+from .logging_config import configure_logging
+from sentry_sdk import init as sentry_init
+from .config import SENTRY_DSN
+
+configure_logging()
 
 logger = logging.getLogger(__name__)
+
+# Initialize Sentry if DSN provided
+if SENTRY_DSN:
+    try:
+        sentry_init(dsn=SENTRY_DSN, traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.0")))
+        logger.info("Sentry initialized")
+    except Exception:
+        logger.exception("Failed to initialize Sentry")
 
 
 @asynccontextmanager
@@ -61,6 +76,7 @@ app = FastAPI(lifespan=lifespan)
 # Include routers
 app.include_router(channels.router)
 app.include_router(media.router)
+app.include_router(admin_router)
 
 
 @app.get("/health")

@@ -10,3 +10,8 @@ minio
 pytest
 pytest-asyncio
 httpx
+alembic
+sentry-sdk
+passlib[bcrypt]
+python-jose[cryptography]
+Jinja2

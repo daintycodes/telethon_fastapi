@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Telethon Admin</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .hidden { display: none; }
+      pre { background: #f6f6f6; padding: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Telethon Admin</h1>
+
+    <div id="login">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label>Username: <input name="username" /></label><br/>
+        <label>Password: <input type="password" name="password" /></label><br/>
+        <button type="submit">Login</button>
+      </form>
+      <pre id="loginResult"></pre>
+    </div>
+
+    <div id="dashboard" class="hidden">
+      <button id="logout">Logout</button>
+      <h2>Pending Media</h2>
+      <div id="pending"></div>
+
+      <h2>Preview Telegram Channel</h2>
+      <form id="previewForm">
+        <label>Channel username: <input name="channel" /></label>
+        <label>Limit: <input name="limit" value="10" /></label>
+        <button type="submit">Preview</button>
+      </form>
+      <div id="preview"></div>
+    </div>
+
+    <script>
+      const loginForm = document.getElementById('loginForm')
+      const loginResult = document.getElementById('loginResult')
+      const dashboard = document.getElementById('dashboard')
+      const loginDiv = document.getElementById('login')
+      const pendingDiv = document.getElementById('pending')
+      const previewForm = document.getElementById('previewForm')
+      const previewDiv = document.getElementById('preview')
+      const logoutBtn = document.getElementById('logout')
+
+      let token = null
+
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const fd = new FormData(loginForm)
+        const body = new URLSearchParams()
+        body.append('username', fd.get('username'))
+        body.append('password', fd.get('password'))
+        const res = await fetch('/auth/login', { method: 'POST', body })
+        if (!res.ok) {
+          loginResult.textContent = 'Login failed'
+          return
+        }
+        const data = await res.json()
+        token = data.access_token
+        loginDiv.classList.add('hidden')
+        dashboard.classList.remove('hidden')
+        fetchPending()
+      })
+
+      logoutBtn.addEventListener('click', () => {
+        token = null
+        loginDiv.classList.remove('hidden')
+        dashboard.classList.add('hidden')
+      })
+
+      async function fetchPending() {
+        pendingDiv.textContent = 'Loading...'
+        const res = await fetch('/api/media/pending', { headers: { 'Authorization': 'Bearer ' + token } })
+        if (!res.ok) {
+          pendingDiv.textContent = 'Error fetching pending: ' + res.status
+          return
+        }
+        const data = await res.json()
+        pendingDiv.innerHTML = ''
+        data.items.forEach(m => {
+          const el = document.createElement('div')
+          el.innerHTML = `<b>${m.file_name}</b> (${m.file_type}) - message ${m.message_id} - <button data-id="${m.id}">Approve</button> <pre>${m.text || ''}</pre>`
+          pendingDiv.appendChild(el)
+          el.querySelector('button').addEventListener('click', () => approve(m.id))
+        })
+      }
+
+      async function approve(id) {
+        const res = await fetch(`/api/media/${id}/approve`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } })
+        if (res.ok) {
+          alert('Approved')
+          fetchPending()
+        } else {
+          alert('Approve failed: ' + res.status)
+        }
+      }
+
+      previewForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        previewDiv.textContent = 'Loading...'
+        const fd = new FormData(previewForm)
+        const channel = fd.get('channel')
+        const limit = fd.get('limit')
+        const res = await fetch(`/api/telegram/${encodeURIComponent(channel)}/messages?limit=${limit}`, { headers: { 'Authorization': 'Bearer ' + token } })
+        if (!res.ok) { previewDiv.textContent = 'Error: ' + res.status; return }
+        const data = await res.json()
+        previewDiv.innerHTML = JSON.stringify(data.items, null, 2)
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    environment:
+      TG_API_ID: "YOUR_API_ID"
+      TG_API_HASH: "YOUR_API_HASH"
+      TG_SESSION: "telethon_session"
+
+      # Existing MinIO configuration
+      S3_ENDPOINT: "10.0.1.8"  # Use host URL or container DNS if inside Docker
+      S3_ACCESS_KEY: "osKu8JTEIi5hv8GV"
+      S3_SECRET_KEY: "fXQ20XK8OLs8gDBsGJUGg47eAEStkw3O"
+      S3_BUCKET_AUDIO: "audio"
+      S3_BUCKET_PDF: "pdf"
+
+      # Database (SQLite by default; can switch to Postgres)
+      DATABASE_URL: "sqlite:///./telethon.db"
+    volumes:
+      - ./telethon.db:/app/telethon.db   # persist DB
+      - ./downloads:/app/downloads       # optional: local media temp storage
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --reload

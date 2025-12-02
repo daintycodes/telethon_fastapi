@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+telethon
+boto3
+sqlalchemy
+pydantic
+python-multipart
+apscheduler

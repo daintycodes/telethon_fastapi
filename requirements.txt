@@ -15,3 +15,5 @@ sentry-sdk
 passlib[bcrypt]
 python-jose[cryptography]
 Jinja2
+
+psycopg2-binary

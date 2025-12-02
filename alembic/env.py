@@ -13,7 +13,15 @@ from alembic import context
 config = context.config
 
 # Interpret the config file for Python logging.
-fileConfig(config.config_file_name)
+try:
+    if config.config_file_name and os.path.exists(config.config_file_name):
+        fileConfig(config.config_file_name)
+    else:
+        # No config file present; skip logging configuration
+        pass
+except Exception:
+    # If any logging config issue occurs, continue without failing migrations
+    pass
 
 # Add your model's MetaData object here for 'autogenerate' support
 import sys

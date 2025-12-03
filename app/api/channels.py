@@ -1,7 +1,8 @@
 """API endpoints for managing Telegram channels."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Body
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from .. import crud, models
 from ..database import get_db
@@ -10,17 +11,18 @@ from ..auth import require_admin
 router = APIRouter(prefix="/api", tags=["channels"])
 
 
+class ChannelCreate(BaseModel):
+    username: str
+
+
 @router.post("/channels/")
-def add_channel(username: str, db: Session = Depends(get_db), _=Depends(require_admin)):
+def add_channel(payload: ChannelCreate = Body(...), db: Session = Depends(get_db), _=Depends(require_admin)):
     """Add a new Telegram channel to monitor.
     
-    Args:
-        username: Telegram channel username.
-        db: Database session.
-        
-    Returns:
-        Channel: Created channel object.
+    Accepts JSON body: {"username": "@channel"}
+    Returns the created Channel object.
     """
+    username = payload.username
     channel = models.Channel(username=username)
     db.add(channel)
     db.commit()

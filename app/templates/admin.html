@@ -1,125 +1,1023 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Telethon Admin</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telethon Admin Dashboard</title>
     <style>
-      body { font-family: Arial, sans-serif; margin: 20px; }
-      .hidden { display: none; }
-      pre { background: #f6f6f6; padding: 8px; }
-    </style>
-  </head>
-  <body>
-    <h1>Telethon Admin</h1>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    <div id="login">
-      <h2>Login</h2>
-      <form id="loginForm">
-        <label>Username: <input name="username" /></label><br/>
-        <label>Password: <input type="password" name="password" /></label><br/>
-        <button type="submit">Login</button>
-      </form>
-      <pre id="loginResult"></pre>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-box h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .login-result {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .login-result.error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+            display: block;
+        }
+
+        .login-result.success {
+            background: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+            display: block;
+        }
+
+        /* Dashboard Layout */
+        .dashboard {
+            display: flex;
+            width: 100%;
+            background: #f5f7fa;
+            display: none;
+        }
+
+        .dashboard.active {
+            display: flex;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #1a252f;
+            border-bottom: 1px solid #34495e;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            padding-bottom: 60px;
+        }
+
+        .sidebar-nav li {
+            border-bottom: 1px solid #34495e;
+        }
+
+        .sidebar-nav button {
+            width: 100%;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            color: #ecf0f1;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .sidebar-nav button:hover {
+            background: #34495e;
+            padding-left: 25px;
+        }
+
+        .sidebar-nav button.active {
+            background: #667eea;
+            color: white;
+            border-left: 4px solid #764ba2;
+            padding-left: 16px;
+        }
+
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            width: 250px;
+            padding: 15px;
+            border-top: 1px solid #34495e;
+            background: #1a252f;
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 10px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .content-header {
+            margin-bottom: 30px;
+        }
+
+        .content-header h2 {
+            color: #2c3e50;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .content-header p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        /* Tabs */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        table thead {
+            background: #f8f9fa;
+        }
+
+        table th {
+            padding: 12px;
+            text-align: left;
+            color: #2c3e50;
+            font-weight: 600;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            color: #555;
+        }
+
+        table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* Forms */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination-info {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 13px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        /* Messages */
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .label {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="loginSection" class="login-container">
+        <div class="login-box">
+            <h1>🔒 Admin Login</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="login-btn">Login</button>
+            </form>
+            <div id="loginResult" class="login-result"></div>
+        </div>
     </div>
 
-    <div id="dashboard" class="hidden">
-      <button id="logout">Logout</button>
-      <h2>Pending Media</h2>
-      <div id="pending"></div>
+    <!-- Dashboard Section -->
+    <div id="dashboardSection" class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">📺 Telethon Admin</div>
+            <ul class="sidebar-nav">
+                <li><button class="nav-btn active" data-tab="dashboard">Dashboard</button></li>
+                <li><button class="nav-btn" data-tab="pending">Pending Media</button></li>
+                <li><button class="nav-btn" data-tab="channels">Channels</button></li>
+                <li><button class="nav-btn" data-tab="media">All Media</button></li>
+                <li><button class="nav-btn" data-tab="preview">Preview Messages</button></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+        </div>
 
-      <h2>Preview Telegram Channel</h2>
-      <form id="previewForm">
-        <label>Channel username: <input name="channel" /></label>
-        <label>Limit: <input name="limit" value="10" /></label>
-        <button type="submit">Preview</button>
-      </form>
-      <div id="preview"></div>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="content-header">
+                    <h2>📊 Dashboard</h2>
+                    <p>Overview of your Telethon FastAPI system</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="value" id="pendingCount">0</div>
+                        <div class="label">Pending Media</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="approvedCount">0</div>
+                        <div class="label">Approved Media</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="channelCount">0</div>
+                        <div class="label">Active Channels</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Recent Pending Media</h3>
+                    <div id="recentPending" class="table-container">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Pending Media Tab -->
+            <div id="pending" class="tab-content">
+                <div class="content-header">
+                    <h2>⏳ Pending Media</h2>
+                    <p>Media files awaiting approval</p>
+                </div>
+                <div class="card">
+                    <div id="pendingMessage" class="message"></div>
+                    <div class="table-container" id="pendingTableContainer">Loading...</div>
+                    <div class="pagination" id="pendingPagination"></div>
+                </div>
+            </div>
+
+            <!-- Channels Tab -->
+            <div id="channels" class="tab-content">
+                <div class="content-header">
+                    <h2>📢 Channels</h2>
+                    <p>Manage your monitored channels</p>
+                </div>
+                <div class="card">
+                    <h3>Add New Channel</h3>
+                    <div class="form-row">
+                        <input type="text" id="newChannelUsername" placeholder="Channel username (e.g., @mychannel)">
+                        <button class="btn btn-primary" id="addChannelBtn">Add Channel</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>All Channels</h3>
+                    <div id="channelsMessage" class="message"></div>
+                    <div class="table-container" id="channelsTableContainer">Loading...</div>
+                    <div class="pagination" id="channelsPagination"></div>
+                </div>
+            </div>
+
+            <!-- All Media Tab -->
+            <div id="media" class="tab-content">
+                <div class="content-header">
+                    <h2>📁 All Media</h2>
+                    <p>Browse all media files</p>
+                </div>
+                <div class="card">
+                    <h3>Filters</h3>
+                    <div class="form-row">
+                        <select id="mediaTypeFilter">
+                            <option value="">All Types</option>
+                            <option value="audio">Audio</option>
+                            <option value="pdf">PDF</option>
+                        </select>
+                        <select id="approvalFilter">
+                            <option value="">All</option>
+                            <option value="true">Approved Only</option>
+                            <option value="false">Pending Only</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card">
+                    <div id="mediaMessage" class="message"></div>
+                    <div class="table-container" id="mediaTableContainer">Loading...</div>
+                    <div class="pagination" id="mediaPagination"></div>
+                </div>
+            </div>
+
+            <!-- Preview Messages Tab -->
+            <div id="preview" class="tab-content">
+                <div class="content-header">
+                    <h2>👁️ Preview Messages</h2>
+                    <p>Preview messages from a channel</p>
+                </div>
+                <div class="card">
+                    <h3>Channel Preview</h3>
+                    <div class="form-row">
+                        <input type="text" id="previewChannel" placeholder="Channel username (e.g., @mychannel)">
+                        <input type="number" id="previewLimit" value="20" min="1" max="100" placeholder="Limit">
+                        <button class="btn btn-primary" id="previewBtn">Preview</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Results</h3>
+                    <div id="previewMessage" class="message"></div>
+                    <div id="previewResults" class="table-container">Ready to preview</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-      const loginForm = document.getElementById('loginForm')
-      const loginResult = document.getElementById('loginResult')
-      const dashboard = document.getElementById('dashboard')
-      const loginDiv = document.getElementById('login')
-      const pendingDiv = document.getElementById('pending')
-      const previewForm = document.getElementById('previewForm')
-      const previewDiv = document.getElementById('preview')
-      const logoutBtn = document.getElementById('logout')
+        const API_BASE = '';
+        let token = null;
+        let currentPage = { pending: 1, channels: 1, media: 1 };
+        const ITEMS_PER_PAGE = 10;
 
-      let token = null
+        // ============ Login ============
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const body = new URLSearchParams();
+                body.append('username', username);
+                body.append('password', password);
+                
+                const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body
+                });
+                
+                if (!res.ok) {
+                    const err = await res.text();
+                    showLoginError(`Login failed: ${err}`);
+                    return;
+                }
+                
+                const data = await res.json();
+                token = data.access_token;
+                showDashboard();
+                loadDashboard();
+            } catch (err) {
+                showLoginError(`Error: ${err.message}`);
+            }
+        });
 
-      loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault()
-        const fd = new FormData(loginForm)
-        const body = new URLSearchParams()
-        body.append('username', fd.get('username'))
-        body.append('password', fd.get('password'))
-        try {
-          const res = await fetch('/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body
-          })
-          if (!res.ok) {
-            const errText = await res.text()
-            loginResult.textContent = `Login failed: ${res.status} - ${errText}`
-            return
-          }
-          const data = await res.json()
-          token = data.access_token
-          loginDiv.classList.add('hidden')
-          dashboard.classList.remove('hidden')
-          loginResult.textContent = ''
-          fetchPending()
-        } catch (err) {
-          loginResult.textContent = `Error: ${err.message}`
+        function showLoginError(msg) {
+            const result = document.getElementById('loginResult');
+            result.textContent = msg;
+            result.classList.add('error');
         }
-      })
 
-      logoutBtn.addEventListener('click', () => {
-        token = null
-        loginDiv.classList.remove('hidden')
-        dashboard.classList.add('hidden')
-      })
-
-      async function fetchPending() {
-        pendingDiv.textContent = 'Loading...'
-        const res = await fetch('/api/media/pending', { headers: { 'Authorization': 'Bearer ' + token } })
-        if (!res.ok) {
-          pendingDiv.textContent = 'Error fetching pending: ' + res.status
-          return
+        function showDashboard() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboardSection').classList.add('active');
         }
-        const data = await res.json()
-        pendingDiv.innerHTML = ''
-        data.items.forEach(m => {
-          const el = document.createElement('div')
-          el.innerHTML = `<b>${m.file_name}</b> (${m.file_type}) - message ${m.message_id} - <button data-id="${m.id}">Approve</button> <pre>${m.text || ''}</pre>`
-          pendingDiv.appendChild(el)
-          el.querySelector('button').addEventListener('click', () => approve(m.id))
-        })
-      }
 
-      async function approve(id) {
-        const res = await fetch(`/api/media/${id}/approve`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } })
-        if (res.ok) {
-          alert('Approved')
-          fetchPending()
-        } else {
-          alert('Approve failed: ' + res.status)
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            token = null;
+            document.getElementById('loginSection').style.display = 'flex';
+            document.getElementById('dashboardSection').classList.remove('active');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('loginResult').classList.remove('error', 'success');
+        });
+
+        // ============ Navigation ============
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+                const tabId = e.target.dataset.tab;
+                document.getElementById(tabId).classList.add('active');
+                
+                if (tabId === 'pending') loadPending();
+                if (tabId === 'channels') loadChannels();
+                if (tabId === 'media') loadMedia();
+            });
+        });
+
+        // ============ Dashboard ============
+        async function loadDashboard() {
+            try {
+                const res1 = await fetchAPI('/api/media/pending');
+                const res2 = await fetchAPI('/api/media/?approved_only=true&limit=100');
+                const res3 = await fetchAPI('/api/channels/all');
+                
+                document.getElementById('pendingCount').textContent = res1.total || 0;
+                document.getElementById('approvedCount').textContent = res2.total || 0;
+                document.getElementById('channelCount').textContent = res3.length || 0;
+                
+                // Recent pending
+                const pending = (res1.items || []).slice(0, 5);
+                const html = pending.length ? 
+                    `<table>
+                        <thead><tr><th>File Name</th><th>Type</th><th>Channel</th><th>Status</th><th>Action</th></tr></thead>
+                        <tbody>${pending.map(m => `<tr>
+                            <td>${m.file_name}</td>
+                            <td><span class="status-badge">${m.file_type}</span></td>
+                            <td>${m.channel_username}</td>
+                            <td><span class="status-badge status-pending">Pending</span></td>
+                            <td><button class="btn btn-success btn-small" onclick="approveMedia(${m.id})">Approve</button></td>
+                        </tr>`).join('')}</tbody>
+                    </table>` :
+                    '<p style="text-align: center; color: #7f8c8d;">No pending media</p>';
+                
+                document.getElementById('recentPending').innerHTML = html;
+            } catch (err) {
+                console.error('Dashboard load error:', err);
+            }
         }
-      }
 
-      previewForm.addEventListener('submit', async (e) => {
-        e.preventDefault()
-        previewDiv.textContent = 'Loading...'
-        const fd = new FormData(previewForm)
-        const channel = fd.get('channel')
-        const limit = fd.get('limit')
-        const res = await fetch(`/api/telegram/${encodeURIComponent(channel)}/messages?limit=${limit}`, { headers: { 'Authorization': 'Bearer ' + token } })
-        if (!res.ok) { previewDiv.textContent = 'Error: ' + res.status; return }
-        const data = await res.json()
-        previewDiv.innerHTML = JSON.stringify(data.items, null, 2)
-      })
+        // ============ Pending Media ============
+        async function loadPending(page = 1) {
+            currentPage.pending = page;
+            try {
+                const res = await fetchAPI('/api/media/pending');
+                const items = res.items || [];
+                
+                if (items.length === 0) {
+                    showMessage('pendingMessage', 'No pending media', 'info');
+                    document.getElementById('pendingTableContainer').innerHTML = '';
+                    return;
+                }
+                
+                const pageStart = (page - 1) * ITEMS_PER_PAGE;
+                const pageEnd = pageStart + ITEMS_PER_PAGE;
+                const pageItems = items.slice(pageStart, pageEnd);
+                
+                const html = `<table>
+                    <thead><tr><th>ID</th><th>File Name</th><th>Type</th><th>Channel</th><th>Message ID</th><th>Action</th></tr></thead>
+                    <tbody>${pageItems.map(m => `<tr>
+                        <td>${m.id}</td>
+                        <td>${m.file_name}</td>
+                        <td><span class="status-badge">${m.file_type}</span></td>
+                        <td>${m.channel_username}</td>
+                        <td>${m.message_id}</td>
+                        <td><button class="btn btn-success btn-small" onclick="approveMedia(${m.id})">Approve</button></td>
+                    </tr>`).join('')}</tbody>
+                </table>`;
+                
+                document.getElementById('pendingTableContainer').innerHTML = html;
+                
+                const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+                renderPagination('pendingPagination', page, totalPages, loadPending);
+            } catch (err) {
+                showMessage('pendingMessage', `Error: ${err.message}`, 'error');
+            }
+        }
+
+        async function approveMedia(mediaId) {
+            try {
+                await fetchAPI(`/api/media/${mediaId}/approve`, 'POST');
+                showMessage('pendingMessage', 'Media approved and uploaded!', 'success');
+                loadPending(currentPage.pending);
+                loadDashboard();
+            } catch (err) {
+                showMessage('pendingMessage', `Approval failed: ${err.message}`, 'error');
+            }
+        }
+
+        // ============ Channels ============
+        async function loadChannels(page = 1) {
+            currentPage.channels = page;
+            try {
+                const res = await fetchAPI('/api/channels/all');
+                const items = res || [];
+                
+                if (items.length === 0) {
+                    showMessage('channelsMessage', 'No channels found', 'info');
+                    document.getElementById('channelsTableContainer').innerHTML = '';
+                    return;
+                }
+                
+                const pageStart = (page - 1) * ITEMS_PER_PAGE;
+                const pageEnd = pageStart + ITEMS_PER_PAGE;
+                const pageItems = items.slice(pageStart, pageEnd);
+                
+                const html = `<table>
+                    <thead><tr><th>ID</th><th>Username</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>${pageItems.map(c => `<tr>
+                        <td>${c.id}</td>
+                        <td>@${c.channel_username || c.username}</td>
+                        <td><span class="status-badge ${c.active ? 'status-active' : 'status-inactive'}">${c.active ? 'Active' : 'Inactive'}</span></td>
+                        <td>
+                            <button class="btn btn-primary btn-small" onclick="toggleChannel(${c.id}, ${!c.active})">
+                                ${c.active ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button class="btn btn-danger btn-small" onclick="deleteChannel(${c.id})">Delete</button>
+                        </td>
+                    </tr>`).join('')}</tbody>
+                </table>`;
+                
+                document.getElementById('channelsTableContainer').innerHTML = html;
+                
+                const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+                renderPagination('channelsPagination', page, totalPages, loadChannels);
+            } catch (err) {
+                showMessage('channelsMessage', `Error: ${err.message}`, 'error');
+            }
+        }
+
+        document.getElementById('addChannelBtn').addEventListener('click', async () => {
+            const username = document.getElementById('newChannelUsername').value.trim();
+            if (!username) {
+                alert('Please enter a channel username');
+                return;
+            }
+            
+            try {
+                await fetchAPI('/api/channels/', 'POST', { username });
+                showMessage('channelsMessage', 'Channel added!', 'success');
+                document.getElementById('newChannelUsername').value = '';
+                loadChannels();
+            } catch (err) {
+                showMessage('channelsMessage', `Error: ${err.message}`, 'error');
+            }
+        });
+
+        async function toggleChannel(id, active) {
+            try {
+                await fetchAPI(`/api/channels/${id}`, 'PATCH', { active });
+                loadChannels(currentPage.channels);
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+
+        async function deleteChannel(id) {
+            if (!confirm('Delete this channel?')) return;
+            try {
+                await fetchAPI(`/api/channels/${id}`, 'DELETE');
+                loadChannels(currentPage.channels);
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+
+        // ============ All Media ============
+        async function loadMedia(page = 1) {
+            currentPage.media = page;
+            try {
+                const mediaType = document.getElementById('mediaTypeFilter').value;
+                const approval = document.getElementById('approvalFilter').value;
+                let url = `/api/media/?skip=${(page - 1) * ITEMS_PER_PAGE}&limit=${ITEMS_PER_PAGE}`;
+                if (mediaType) url += `&media_type=${mediaType}`;
+                if (approval !== '') url += `&approved_only=${approval}`;
+                
+                const res = await fetchAPI(url);
+                const items = res.items || [];
+                
+                if (items.length === 0) {
+                    showMessage('mediaMessage', 'No media found', 'info');
+                    document.getElementById('mediaTableContainer').innerHTML = '';
+                    return;
+                }
+                
+                const html = `<table>
+                    <thead><tr><th>ID</th><th>File Name</th><th>Type</th><th>Channel</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>${items.map(m => `<tr>
+                        <td>${m.id}</td>
+                        <td>${m.file_name}</td>
+                        <td>${m.file_type}</td>
+                        <td>${m.channel_username}</td>
+                        <td><span class="status-badge ${m.approved ? 'status-approved' : 'status-pending'}">${m.approved ? 'Approved' : 'Pending'}</span></td>
+                        <td>${m.approved ? '<button class="btn btn-primary btn-small" onclick="getDownloadUrl(' + m.id + ')">Download</button>' : '<button class="btn btn-success btn-small" onclick="approveMedia(' + m.id + ')">Approve</button>'}</td>
+                    </tr>`).join('')}</tbody>
+                </table>`;
+                
+                document.getElementById('mediaTableContainer').innerHTML = html;
+                
+                const totalPages = Math.ceil(res.total / ITEMS_PER_PAGE);
+                renderPagination('mediaPagination', page, totalPages, loadMedia);
+            } catch (err) {
+                showMessage('mediaMessage', `Error: ${err.message}`, 'error');
+            }
+        }
+
+        document.getElementById('mediaTypeFilter').addEventListener('change', () => loadMedia(1));
+        document.getElementById('approvalFilter').addEventListener('change', () => loadMedia(1));
+
+        async function getDownloadUrl(mediaId) {
+            try {
+                const res = await fetchAPI(`/api/media/${mediaId}/download-url`);
+                window.open(res.url, '_blank');
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+
+        // ============ Preview ============
+        document.getElementById('previewBtn').addEventListener('click', async () => {
+            const channel = document.getElementById('previewChannel').value.trim();
+            const limit = document.getElementById('previewLimit').value || 20;
+            
+            if (!channel) {
+                alert('Please enter a channel username');
+                return;
+            }
+            
+            try {
+                const res = await fetchAPI(`/api/telegram/${encodeURIComponent(channel)}/messages?limit=${limit}`);
+                const items = res.items || [];
+                
+                if (items.length === 0) {
+                    showMessage('previewMessage', 'No messages with media found', 'info');
+                    document.getElementById('previewResults').innerHTML = '';
+                    return;
+                }
+                
+                const html = `<table>
+                    <thead><tr><th>Message ID</th><th>Date</th><th>File Name</th><th>MIME Type</th><th>Size</th></tr></thead>
+                    <tbody>${items.map(m => `<tr>
+                        <td>${m.message_id}</td>
+                        <td>${new Date(m.date).toLocaleString()}</td>
+                        <td>${m.file_name || 'N/A'}</td>
+                        <td>${m.mime_type}</td>
+                        <td>${formatBytes(m.file_size)}</td>
+                    </tr>`).join('')}</tbody>
+                </table>`;
+                
+                document.getElementById('previewResults').innerHTML = html;
+                showMessage('previewMessage', `Found ${items.length} media messages`, 'success');
+            } catch (err) {
+                showMessage('previewMessage', `Error: ${err.message}`, 'error');
+            }
+        });
+
+        // ============ Utilities ============
+        async function fetchAPI(endpoint, method = 'GET', body = null) {
+            const opts = {
+                method,
+                headers: { 'Authorization': `Bearer ${token}` }
+            };
+            
+            if (body) {
+                if (method === 'POST' || method === 'PATCH') {
+                    opts.headers['Content-Type'] = 'application/json';
+                    opts.body = JSON.stringify(body);
+                }
+            }
+            
+            const res = await fetch(endpoint, opts);
+            if (!res.ok) {
+                const err = await res.text();
+                throw new Error(`${res.status}: ${err}`);
+            }
+            return res.json();
+        }
+
+        function showMessage(elementId, msg, type) {
+            const el = document.getElementById(elementId);
+            el.textContent = msg;
+            el.className = `message show ${type}`;
+            if (type !== 'error') setTimeout(() => el.classList.remove('show'), 5000);
+        }
+
+        function renderPagination(elementId, current, total, callback) {
+            const el = document.getElementById(elementId);
+            let html = '';
+            
+            if (current > 1) html += `<button onclick="(${callback.toString()})(1)">First</button>`;
+            if (current > 1) html += `<button onclick="(${callback.toString()})(${current - 1})">Previous</button>`;
+            
+            for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
+                html += `<button class="${i === current ? 'active' : ''}" onclick="(${callback.toString()})(${i})">${i}</button>`;
+            }
+            
+            if (current < total) html += `<button onclick="(${callback.toString()})(${current + 1})">Next</button>`;
+            if (current < total) html += `<button onclick="(${callback.toString()})(${total})">Last</button>`;
+            
+            el.innerHTML = html;
+            if (total > 1) {
+                const info = document.createElement('div');
+                info.className = 'pagination-info';
+                info.textContent = `Page ${current} of ${total}`;
+                el.appendChild(info);
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
     </script>
-  </body>
+</body>
 </html>

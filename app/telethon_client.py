@@ -117,7 +117,7 @@ async def start_client():
                 return
         
         # Verify connection
-        if not client.is_connected():
+        if client is None or not client.is_connected():
             error_msg = "Telethon client failed to connect (is_connected() returned False)"
             logger.error(f"❌ {error_msg}")
             _last_startup_error = error_msg

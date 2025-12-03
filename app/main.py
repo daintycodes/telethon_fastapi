@@ -9,6 +9,7 @@ from .database import engine, SessionLocal
 from .models import Base
 from .api import channels, media
 from .admin import router as admin_router
+from .auth_jwt import router as auth_router
 from .tasks import start_background_tasks, scheduler
 from .s3 import ensure_buckets_exist
 from .telethon_client import start_client
@@ -77,6 +78,7 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(channels.router)
 app.include_router(media.router)
 app.include_router(admin_router)
+app.include_router(auth_router)
 
 
 @app.get("/health")

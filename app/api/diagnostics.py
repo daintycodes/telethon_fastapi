@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..auth import require_admin
 from ..telethon_client import client, _client_started, pull_all_channel_media
-from .. import crud
+from .. import crud, models
 
 logger = logging.getLogger(__name__)
 
@@ -19,20 +19,29 @@ async def get_system_status(db: Session = Depends(get_db), _=Depends(require_adm
     """Get comprehensive system status for diagnostics."""
     
     # Telethon status
+    is_user = None
+    is_bot = None
+    if _client_started and client.is_connected():
+        try:
+            is_user = await client.is_user()
+            is_bot = await client.is_bot()
+        except Exception as e:
+            logger.warning(f"Could not determine client type: {e}")
+    
     telethon_status = {
         "started": _client_started,
         "connected": client.is_connected() if _client_started else False,
-        "is_user": client.is_user() if _client_started and client.is_connected() else None,
-        "is_bot": client.is_bot() if _client_started and client.is_connected() else None,
+        "is_user": is_user,
+        "is_bot": is_bot,
     }
     
     # Database status
     try:
-        total_channels = db.query(crud.models.Channel).count()
-        active_channels = db.query(crud.models.Channel).filter(crud.models.Channel.active == True).count()
-        total_media = db.query(crud.models.MediaFile).count()
-        pending_media = db.query(crud.models.MediaFile).filter(crud.models.MediaFile.approved == False).count()
-        approved_media = db.query(crud.models.MediaFile).filter(crud.models.MediaFile.approved == True).count()
+        total_channels = db.query(models.Channel).count()
+        active_channels = db.query(models.Channel).filter(models.Channel.active == True).count()
+        total_media = db.query(models.MediaFile).count()
+        pending_media = db.query(models.MediaFile).filter(models.MediaFile.approved == False).count()
+        approved_media = db.query(models.MediaFile).filter(models.MediaFile.approved == True).count()
         
         db_status = {
             "connected": True,

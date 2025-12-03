@@ -6,12 +6,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the app code
+# Copy the entire application
 COPY . .
 
-# Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Ensure entrypoint is executable
+RUN chmod +x /app/entrypoint.sh
+
+# Verify app directory exists
+RUN ls -la /app && ls -la /app/app || echo "Warning: app directory structure issue"
 
 # Default command: run entrypoint (migrations + uvicorn)
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]

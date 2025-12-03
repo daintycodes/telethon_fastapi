@@ -24,6 +24,11 @@ def create_admin(username: str, password: str, is_admin: bool = True):
     """Create a new user."""
     db = SessionLocal()
     try:
+        # Truncate password to 72 bytes (bcrypt limit) to avoid issues
+        if len(password.encode('utf-8')) > 72:
+            password = password[:72]
+            print(f"⚠️  Password truncated to 72 bytes (bcrypt limit)")
+        
         existing = crud.get_user_by_username(db, username)
         if existing:
             print(f"❌ User '{username}' already exists (id={existing.id})")
@@ -38,6 +43,8 @@ def create_admin(username: str, password: str, is_admin: bool = True):
         return True
     except Exception as e:
         print(f"❌ Error creating user: {e}")
+        import traceback
+        traceback.print_exc()
         return False
     finally:
         db.close()

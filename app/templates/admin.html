@@ -815,7 +815,10 @@
                     const statusBadge = c.active ? 'status-active' : 'status-inactive';
                     const statusLabel = c.active ? 'Active' : 'Inactive';
                     const actionBtn = c.active ? 'Deactivate' : 'Activate';
-                    tableRows += '<tr><td>' + c.id + '</td><td>' + displayName + '</td><td><span class="status-badge ' + statusBadge + '">' + statusLabel + '</span></td><td><button class="btn btn-primary btn-small" onclick="toggleChannel(' + c.id + ', ' + (!c.active) + ')">' + actionBtn + '</button><button class="btn btn-danger btn-small" onclick="deleteChannel(' + c.id + ')">Delete</button></td></tr>';
+                    const newActive = !c.active;
+                    const row = document.createElement('tr');
+                    row.innerHTML = '<td>' + c.id + '</td><td>' + displayName + '</td><td><span class="status-badge ' + statusBadge + '">' + statusLabel + '</span></td><td><button class="btn btn-primary btn-small" onclick="toggleChannel(' + c.id + ', ' + newActive + ')">' + actionBtn + '</button><button class="btn btn-danger btn-small" onclick="deleteChannel(' + c.id + ')">Delete</button></td>';
+                    tableRows += row.outerHTML;
                 }
                 
                 const html = `<table>

@@ -54,16 +54,26 @@
         const body = new URLSearchParams()
         body.append('username', fd.get('username'))
         body.append('password', fd.get('password'))
-        const res = await fetch('/auth/login', { method: 'POST', body })
-        if (!res.ok) {
-          loginResult.textContent = 'Login failed'
-          return
+        try {
+          const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body
+          })
+          if (!res.ok) {
+            const errText = await res.text()
+            loginResult.textContent = `Login failed: ${res.status} - ${errText}`
+            return
+          }
+          const data = await res.json()
+          token = data.access_token
+          loginDiv.classList.add('hidden')
+          dashboard.classList.remove('hidden')
+          loginResult.textContent = ''
+          fetchPending()
+        } catch (err) {
+          loginResult.textContent = `Error: ${err.message}`
         }
-        const data = await res.json()
-        token = data.access_token
-        loginDiv.classList.add('hidden')
-        dashboard.classList.remove('hidden')
-        fetchPending()
       })
 
       logoutBtn.addEventListener('click', () => {

@@ -19,9 +19,13 @@ _handlers_registered = False
 _client_started = False
 
 
+# Store last startup error for diagnostics
+_last_startup_error = None
+
+
 async def start_client():
     """Start Telethon client, pull historical media, and register event handlers (once per process)."""
-    global _handlers_registered, _client_started
+    global _handlers_registered, _client_started, _last_startup_error
     
     # Avoid interactive prompts in non-interactive containers.
     # If a bot token is provided via env var `TG_BOT_TOKEN` (or `TELEGRAM_BOT_TOKEN`), use it.
@@ -29,29 +33,58 @@ async def start_client():
     bot_token = os.getenv("TG_BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
     session_file = f"{SESSION_NAME}.session"
 
+    # Log diagnostic information
+    logger.info(f"Telethon startup diagnostics:")
+    logger.info(f"  - TG_BOT_TOKEN present: {bool(bot_token)}")
+    if bot_token:
+        logger.info(f"  - Token preview: {bot_token[:20]}...")
+    logger.info(f"  - API_ID: {API_ID}")
+    logger.info(f"  - API_HASH present: {bool(API_HASH)}")
+    logger.info(f"  - Session file: {session_file}")
+    logger.info(f"  - Session file exists: {os.path.exists(session_file)}")
+    logger.info(f"  - Client already connected: {client.is_connected()}")
+
     try:
         if bot_token:
             logger.info("Starting Telethon client with bot token...")
-            await client.start(bot_token=bot_token)
+            try:
+                await client.start(bot_token=bot_token)
+                logger.info("✅ client.start() completed successfully")
+            except Exception as start_error:
+                logger.error(f"❌ client.start() failed: {type(start_error).__name__}: {start_error}")
+                _last_startup_error = str(start_error)
+                raise
         else:
             if os.path.exists(session_file):
                 logger.info("Starting Telethon client with existing session...")
                 await client.start()
             else:
-                logger.error(
+                error_msg = (
                     "No TG_BOT_TOKEN and no existing Telethon session file found. "
                     "Skipping Telethon client start to avoid interactive prompt. "
                     "Provide a bot token via TG_BOT_TOKEN or mount a session file."
                 )
+                logger.error(error_msg)
+                _last_startup_error = error_msg
                 return
         
         # Verify connection
         if not client.is_connected():
-            logger.error("Telethon client failed to connect")
+            error_msg = "Telethon client failed to connect (is_connected() returned False)"
+            logger.error(f"❌ {error_msg}")
+            _last_startup_error = error_msg
             return
         
         _client_started = True
-        logger.info("Telethon client connected successfully")
+        _last_startup_error = None
+        logger.info("✅ Telethon client connected successfully")
+        
+        # Get client info
+        try:
+            me = await client.get_me()
+            logger.info(f"✅ Logged in as: {me.username or me.first_name} (ID: {me.id})")
+        except Exception as me_error:
+            logger.warning(f"Could not get client info: {me_error}")
         
         if not _handlers_registered:
             register_handlers()
@@ -63,7 +96,9 @@ async def start_client():
         
         logger.info("Telethon client started and handlers registered")
     except Exception as e:
-        logger.error(f"Failed to start Telethon client: {e}", exc_info=True)
+        error_details = f"{type(e).__name__}: {e}"
+        logger.error(f"❌ Failed to start Telethon client: {error_details}", exc_info=True)
+        _last_startup_error = error_details
         _client_started = False
 
 

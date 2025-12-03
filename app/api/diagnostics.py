@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..auth import require_admin
-from ..telethon_client import client, _client_started, pull_all_channel_media
+from ..telethon_client import client, _client_started, _last_startup_error, pull_all_channel_media
 from .. import crud, models
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,7 @@ async def get_system_status(db: Session = Depends(get_db), _=Depends(require_adm
         "connected": client.is_connected() if _client_started else False,
         "is_user": is_user,
         "is_bot": is_bot,
+        "last_error": _last_startup_error,
     }
     
     # Database status

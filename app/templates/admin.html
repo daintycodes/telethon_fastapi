@@ -758,11 +758,15 @@
                 const res = await fetchAPI('/api/diagnostics/status');
                 
                 // Render Telethon status
+                const lastErrorHtml = res.telethon.last_error ? 
+                    `<tr><td><strong>Last Error:</strong></td><td style="color: #e74c3c; font-family: monospace; font-size: 12px;">${res.telethon.last_error}</td></tr>` : '';
+                
                 const telethonHtml = `
                     <table>
                         <tr><td><strong>Started:</strong></td><td>${res.telethon.started ? '✅ Yes' : '❌ No'}</td></tr>
                         <tr><td><strong>Connected:</strong></td><td>${res.telethon.connected ? '✅ Yes' : '❌ No'}</td></tr>
                         <tr><td><strong>Client Type:</strong></td><td>${res.telethon.is_bot ? 'Bot' : res.telethon.is_user ? 'User' : 'Unknown'}</td></tr>
+                        ${lastErrorHtml}
                     </table>
                     <h4 style="margin-top: 20px;">Database</h4>
                     <table>

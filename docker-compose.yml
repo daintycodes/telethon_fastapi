@@ -5,6 +5,9 @@ services:
     build: .
     container_name: telethon-fastapi
     environment:
+      # Telegram Bot Token (REQUIRED - primary authentication method)
+      TG_BOT_TOKEN: "${TG_BOT_TOKEN}"
+      
       # Telegram API credentials (required)
       TG_API_ID: "${TG_API_ID}"
       TG_API_HASH: "${TG_API_HASH}"

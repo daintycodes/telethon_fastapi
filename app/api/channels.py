@@ -2,7 +2,8 @@
 
 import asyncio
 import logging
-from fastapi import APIRouter, Depends, Body, BackgroundTasks
+import re
+from fastapi import APIRouter, Depends, Body, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -14,6 +15,44 @@ from ..telethon_client import pull_all_channel_media
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["channels"])
+
+
+def validate_channel_username(username: str) -> str:
+    """Validate and normalize channel username.
+    
+    Accepts:
+    - @username
+    - username
+    - t.me/username
+    - https://t.me/username
+    
+    Returns: @username (normalized)
+    Raises: ValueError if invalid
+    """
+    if not username:
+        raise ValueError("Channel username cannot be empty")
+    
+    original = username
+    
+    # Remove URL prefixes
+    username = username.replace("https://t.me/", "")
+    username = username.replace("http://t.me/", "")
+    username = username.replace("t.me/", "")
+    username = username.strip()
+    
+    # Add @ prefix if missing
+    if not username.startswith("@"):
+        username = f"@{username}"
+    
+    # Validate format: @username (alphanumeric + underscore, 5-32 chars)
+    if not re.match(r"^@[a-zA-Z0-9_]{5,32}$", username):
+        raise ValueError(
+            f"Invalid channel username format: '{original}'. "
+            f"Must be 5-32 characters, alphanumeric and underscores only. "
+            f"Normalized to: '{username}'"
+        )
+    
+    return username
 
 
 class ChannelCreate(BaseModel):
@@ -37,7 +76,23 @@ async def add_channel(
     Returns the created Channel object.
     Triggers an async media pull for this channel.
     """
-    username = payload.username
+    # Validate and normalize username
+    try:
+        normalized_username = validate_channel_username(payload.username)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    # Check for duplicates
+    existing = db.query(models.Channel).filter(
+        models.Channel.username == normalized_username
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Channel {normalized_username} already exists with ID {existing.id}"
+        )
+    
+    username = normalized_username
     channel = models.Channel(username=username)
     db.add(channel)
     db.commit()

@@ -90,15 +90,17 @@ async def health_check():
         from .telethon_client import client, _client_started
         
         telethon_status = "disconnected"
-        if _client_started and client.is_connected():
+        if _client_started and client is not None and client.is_connected():
             telethon_status = "connected"
-        elif _client_started:
+        elif _client_started and client is not None:
             telethon_status = "started_but_disconnected"
+        elif client is None:
+            telethon_status = "not_initialized"
         
         return {
             "status": "healthy",
             "telethon_client": telethon_status,
-            "telethon_connected": client.is_connected() if _client_started else False
+            "telethon_connected": (client.is_connected() if (client is not None and _client_started) else False)
         }
     except Exception as e:
         # If telethon_client fails to import, still return healthy but show error

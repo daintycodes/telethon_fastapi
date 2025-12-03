@@ -4,31 +4,67 @@ import os
 import logging
 from telethon import TelegramClient, events
 
-from .config import API_ID, API_HASH, SESSION_NAME
+from .config import API_ID, API_HASH
 from .crud import media_exists, save_media
 from .s3 import store_media
 from .database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
-client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
+# Lazy initialization - client will be created in start_client()
+client = None
 _handlers_registered = False
 _client_started = False
-
 
 # Store last startup error for diagnostics
 _last_startup_error = None
 
 
+def get_session_path():
+    """Resolve the correct session file path.
+    
+    Priority:
+    1. TG_SESSION environment variable (if set)
+    2. /data/telethon_session (if file exists)
+    3. telethon_session (current directory - backward compatibility)
+    """
+    env_session = os.getenv("TG_SESSION")
+    if env_session:
+        logger.info(f"Using session path from TG_SESSION: {env_session}")
+        return env_session
+    
+    # Check /data first (new default)
+    data_session = "/data/telethon_session"
+    if os.path.exists(f"{data_session}.session"):
+        logger.info(f"Found session file at: {data_session}.session")
+        return data_session
+    
+    # Fallback to current directory
+    local_session = "telethon_session"
+    if os.path.exists(f"{local_session}.session"):
+        logger.info(f"Found session file at: {local_session}.session")
+        return local_session
+    
+    # Default to /data for new sessions
+    logger.info(f"No existing session found, will create at: {data_session}")
+    return data_session
+
+
 async def start_client():
     """Start Telethon client, pull historical media, and register event handlers (once per process)."""
-    global _handlers_registered, _client_started, _last_startup_error
+    global client, _handlers_registered, _client_started, _last_startup_error
     
-    # Avoid interactive prompts in non-interactive containers.
-    # If a bot token is provided via env var `TG_BOT_TOKEN` (or `TELEGRAM_BOT_TOKEN`), use it.
-    # Otherwise only start if an existing session file exists to prevent Telethon from calling input().
+    # Get session path
+    session_path = get_session_path()
+    session_file = f"{session_path}.session"
+    
+    # Initialize client if not already done
+    if client is None:
+        logger.info(f"Initializing Telethon client with session: {session_path}")
+        client = TelegramClient(session_path, API_ID, API_HASH)
+    
+    # Check for bot token
     bot_token = os.getenv("TG_BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
-    session_file = f"{SESSION_NAME}.session"
 
     # Log diagnostic information
     logger.info(f"Telethon startup diagnostics:")
@@ -54,12 +90,27 @@ async def start_client():
         else:
             if os.path.exists(session_file):
                 logger.info("Starting Telethon client with existing session...")
-                await client.start()
+                # Use phone callback that returns None to prevent interactive prompts
+                # If session is invalid, this will fail gracefully
+                try:
+                    await client.start(phone=lambda: None)
+                except EOFError:
+                    error_msg = (
+                        f"Session file exists at {session_file} but is invalid or incomplete. "
+                        "The session may have been created with different API_ID/API_HASH, "
+                        "or requires re-authentication. Please generate a new session file "
+                        "using generate_session.py with the EXACT same API_ID and API_HASH "
+                        "as your deployment environment variables."
+                    )
+                    logger.error(error_msg)
+                    _last_startup_error = error_msg
+                    raise ValueError(error_msg)
             else:
                 error_msg = (
-                    "No TG_BOT_TOKEN and no existing Telethon session file found. "
+                    f"No TG_BOT_TOKEN and no session file found at {session_file}. "
                     "Skipping Telethon client start to avoid interactive prompt. "
-                    "Provide a bot token via TG_BOT_TOKEN or mount a session file."
+                    "Options: (1) Set TG_BOT_TOKEN for bot mode, or "
+                    "(2) Generate and upload session file for user mode."
                 )
                 logger.error(error_msg)
                 _last_startup_error = error_msg

@@ -14,7 +14,7 @@ async def check_and_reconnect_client():
         # Import here to avoid module-level import failures
         from .telethon_client import client, _client_started, start_client
         
-        if not _client_started:
+        if not _client_started or client is None:
             logger.warning("Telethon client not started, attempting to start...")
             await start_client()
         elif not client.is_connected():

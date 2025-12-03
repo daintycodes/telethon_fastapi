@@ -113,7 +113,14 @@ def generate_recommendations(telethon_status, db_status, channel_list):
             "action": "Add channels via the Channels tab to start pulling media."
         })
     
-    if db_status.get("total_media", 0) == 0 and db_status.get("active_channels", 0) > 0:
+    # Check if using bot account
+    if telethon_status.get("is_bot") and db_status.get("total_media", 0) == 0:
+        recommendations.append({
+            "severity": "critical",
+            "issue": "Bot accounts cannot pull historical messages",
+            "action": "Telegram API restricts bots from fetching message history. Switch to USER account session to pull historical media. Bot can only receive NEW messages in real-time."
+        })
+    elif db_status.get("total_media", 0) == 0 and db_status.get("active_channels", 0) > 0:
         recommendations.append({
             "severity": "warning",
             "issue": "No media pulled despite having active channels",

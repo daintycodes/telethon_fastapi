@@ -76,10 +76,16 @@ async def start_client():
         _last_startup_error = None
         logger.info("✅ Telethon client connected successfully")
         
-        # Get client info
+        # Get client info and check if bot
+        is_bot = False
         try:
             me = await client.get_me()
+            is_bot = me.bot
             logger.info(f"✅ Logged in as: {me.username or me.first_name} (ID: {me.id})")
+            if is_bot:
+                logger.warning("⚠️ Running as BOT - historical message pull is NOT supported by Telegram API")
+                logger.warning("⚠️ Bot can only receive NEW messages in real-time")
+                logger.warning("⚠️ To pull historical messages, use a USER account session instead")
         except Exception as me_error:
             logger.warning(f"Could not get client info: {me_error}")
         
@@ -88,8 +94,12 @@ async def start_client():
             _handlers_registered = True
             logger.info("Event handlers registered")
             
-            # Pull all historical audio/pdf messages from all active channels
-            await pull_all_channel_media()
+            # Only pull historical messages if using a user account (not a bot)
+            if not is_bot:
+                logger.info("User account detected - pulling historical media")
+                await pull_all_channel_media()
+            else:
+                logger.info("Bot account detected - skipping historical pull (will only receive new messages)")
         
         logger.info("Telethon client started and handlers registered")
     except Exception as e:

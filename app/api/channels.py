@@ -1,5 +1,7 @@
 """API endpoints for managing Telegram channels."""
 
+import asyncio
+import logging
 from fastapi import APIRouter, Depends, Body
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -7,6 +9,9 @@ from pydantic import BaseModel
 from .. import crud, models
 from ..database import get_db
 from ..auth import require_admin
+from ..telethon_client import pull_all_channel_media
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["channels"])
 
@@ -21,12 +26,21 @@ def add_channel(payload: ChannelCreate = Body(...), db: Session = Depends(get_db
     
     Accepts JSON body: {"username": "@channel"}
     Returns the created Channel object.
+    Triggers an async media pull for this channel.
     """
     username = payload.username
     channel = models.Channel(username=username)
     db.add(channel)
     db.commit()
     db.refresh(channel)
+    
+    # Trigger background media pull for this new channel
+    try:
+        asyncio.create_task(pull_all_channel_media())
+        logger.info(f"Triggered media pull for new channel: {username}")
+    except Exception as e:
+        logger.error(f"Failed to trigger media pull for {username}: {e}")
+    
     return channel
 
 
@@ -62,12 +76,26 @@ def delete_channel(channel_id: int, db: Session = Depends(get_db), _=Depends(req
 
 @router.patch("/channels/{channel_id}")
 def toggle_channel(channel_id: int, active: bool, db: Session = Depends(get_db), _=Depends(require_admin)):
-    """Set channel active/inactive state."""
+    """Set channel active/inactive state.
+    
+    If channel is being activated, triggers media pull in background.
+    """
     from fastapi import HTTPException
     channel = db.query(models.Channel).filter(models.Channel.id == channel_id).first()
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
+    
+    was_inactive = not channel.active
     channel.active = bool(active)
     db.commit()
     db.refresh(channel)
+    
+    # If reactivating, trigger media pull
+    if was_inactive and channel.active:
+        try:
+            asyncio.create_task(pull_all_channel_media())
+            logger.info(f"Channel {channel.username} reactivated, triggering media pull")
+        except Exception as e:
+            logger.error(f"Failed to trigger media pull for {channel.username}: {e}")
+    
     return channel

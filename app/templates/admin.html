@@ -809,25 +809,28 @@
                 const pageEnd = pageStart + ITEMS_PER_PAGE;
                 const pageItems = items.slice(pageStart, pageEnd);
                 
+                let tableRows = '';
+                for (const c of pageItems) {
+                    const displayName = c.username.startsWith('@') ? c.username : '@' + c.username;
+                    const statusBadge = c.active ? 'status-active' : 'status-inactive';
+                    const statusLabel = c.active ? 'Active' : 'Inactive';
+                    const actionBtn = c.active ? 'Deactivate' : 'Activate';
+                    tableRows += `<tr>
+                        <td>${c.id}</td>
+                        <td>${displayName}</td>
+                        <td><span class="status-badge ${statusBadge}">${statusLabel}</span></td>
+                        <td>
+                            <button class="btn btn-primary btn-small" onclick="toggleChannel(${c.id}, ${!c.active})">
+                                ${actionBtn}
+                            </button>
+                            <button class="btn btn-danger btn-small" onclick="deleteChannel(${c.id})">Delete</button>
+                        </td>
+                    </tr>`;
+                }
+                
                 const html = `<table>
                     <thead><tr><th>ID</th><th>Username</th><th>Status</th><th>Actions</th></tr></thead>
-                    <tbody>${pageItems.map(c => {
-                        const displayName = c.username.startsWith('@') ? c.username : '@' + c.username;
-                        const statusBadge = c.active ? 'status-active' : 'status-inactive';
-                        const statusLabel = c.active ? 'Active' : 'Inactive';
-                        const actionBtn = c.active ? 'Deactivate' : 'Activate';
-                        return `<tr>
-                            <td>${c.id}</td>
-                            <td>${displayName}</td>
-                            <td><span class="status-badge ${statusBadge}">${statusLabel}</span></td>
-                            <td>
-                                <button class="btn btn-primary btn-small" onclick="toggleChannel(${c.id}, ${!c.active})">
-                                    ${actionBtn}
-                                </button>
-                                <button class="btn btn-danger btn-small" onclick="deleteChannel(${c.id})">Delete</button>
-                            </td>
-                        </tr>`;
-                    }).join('')}</tbody>
+                    <tbody>${tableRows}</tbody>
                 </table>`;
                 
                 document.getElementById('channelsTableContainer').innerHTML = html;

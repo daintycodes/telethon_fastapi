@@ -75,7 +75,8 @@ async def start_client():
     logger.info(f"  - API_HASH present: {bool(API_HASH)}")
     logger.info(f"  - Session file: {session_file}")
     logger.info(f"  - Session file exists: {os.path.exists(session_file)}")
-    logger.info(f"  - Client already connected: {client.is_connected()}")
+    if os.path.exists(session_file):
+        logger.info(f"  - Session file size: {os.path.getsize(session_file)} bytes")
 
     try:
         if bot_token:
@@ -95,6 +96,7 @@ async def start_client():
                 # If session is invalid, it will raise an error
                 try:
                     await client.start()
+                    logger.info("✅ client.start() completed successfully with session file")
                 except EOFError as eof_error:
                     error_msg = (
                         f"Session file exists at {session_file} but is invalid or incomplete. "
@@ -115,6 +117,18 @@ async def start_client():
                     logger.error(error_msg)
                     _last_startup_error = error_msg
                     raise ValueError(error_msg) from type_error
+                except Exception as telethon_error:
+                    # Catch all other Telethon errors (AuthKeyUnregisteredError, etc.)
+                    error_name = type(telethon_error).__name__
+                    error_msg = (
+                        f"Session file at {session_file} failed authentication: {error_name}: {telethon_error}. "
+                        f"This usually means: (1) Session was created with different API_ID/API_HASH, "
+                        f"(2) Session has been revoked/expired, or (3) Account was logged out from another device. "
+                        f"Please regenerate the session file with the EXACT same credentials."
+                    )
+                    logger.error(error_msg)
+                    _last_startup_error = error_msg
+                    raise ValueError(error_msg) from telethon_error
             else:
                 error_msg = (
                     f"No TG_BOT_TOKEN and no session file found at {session_file}. "

@@ -811,17 +811,23 @@
                 
                 const html = `<table>
                     <thead><tr><th>ID</th><th>Username</th><th>Status</th><th>Actions</th></tr></thead>
-                    <tbody>${pageItems.map(c => `<tr>
-                        <td>${c.id}</td>
-                        <td>@${c.channel_username || c.username}</td>
-                        <td><span class="status-badge ${c.active ? 'status-active' : 'status-inactive'}">${c.active ? 'Active' : 'Inactive'}</span></td>
-                        <td>
-                            <button class="btn btn-primary btn-small" onclick="toggleChannel(${c.id}, ${!c.active})">
-                                ${c.active ? 'Deactivate' : 'Activate'}
-                            </button>
-                            <button class="btn btn-danger btn-small" onclick="deleteChannel(${c.id})">Delete</button>
-                        </td>
-                    </tr>`).join('')}</tbody>
+                    <tbody>${pageItems.map(c => {
+                        const displayName = c.username.startsWith('@') ? c.username : '@' + c.username;
+                        const statusBadge = c.active ? 'status-active' : 'status-inactive';
+                        const statusLabel = c.active ? 'Active' : 'Inactive';
+                        const actionBtn = c.active ? 'Deactivate' : 'Activate';
+                        return `<tr>
+                            <td>${c.id}</td>
+                            <td>${displayName}</td>
+                            <td><span class="status-badge ${statusBadge}">${statusLabel}</span></td>
+                            <td>
+                                <button class="btn btn-primary btn-small" onclick="toggleChannel(${c.id}, ${!c.active})">
+                                    ${actionBtn}
+                                </button>
+                                <button class="btn btn-danger btn-small" onclick="deleteChannel(${c.id})">Delete</button>
+                            </td>
+                        </tr>`;
+                    }).join('')}</tbody>
                 </table>`;
                 
                 document.getElementById('channelsTableContainer').innerHTML = html;

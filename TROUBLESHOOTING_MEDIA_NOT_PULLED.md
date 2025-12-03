@@ -1,5 +1,44 @@
 # Troubleshooting: Media Not Being Pulled
 
+## 🚨 CRITICAL: Bot Account Limitation (MOST COMMON ISSUE)
+
+### **Telegram API Restriction for Bots**
+
+If you see this error in logs:
+```
+The API access for bot users is restricted. 
+The method you tried to invoke cannot be executed as a bot 
+(caused by GetHistoryRequest)
+```
+
+**This is a Telegram API limitation, NOT a bug in your code!**
+
+### **What Bots Can and Cannot Do**
+
+✅ **Bots CAN:**
+- Receive NEW messages in real-time
+- Listen to channels they're added to
+- Process incoming media as it arrives
+
+❌ **Bots CANNOT:**
+- Fetch historical messages from channels
+- Use `client.get_messages()` to pull message history
+- Access past messages via `GetHistoryRequest`
+
+### **Solution: Switch to User Account**
+
+To pull historical media, you MUST use a **user account session** instead of a bot token.
+
+**Quick Fix:**
+1. Generate user session (see instructions below)
+2. Remove `TG_BOT_TOKEN` from Coolify
+3. Upload `telethon_session.session` file
+4. Redeploy
+
+**Detailed instructions in "Scenario 5" below.**
+
+---
+
 ## Issue: Telethon Connected but No Media Pulled
 
 If your `/health` endpoint shows `"telethon_connected": true` but media is not being pulled from channels, follow this guide.
@@ -192,16 +231,116 @@ elif msg.file.mime_type == "video/mp4":
 
 ---
 
-### Scenario 5: Rate Limiting
+### Scenario 5: Bot Account Cannot Pull Historical Messages (MOST COMMON)
+
+**Symptoms:**
+- Logs show: `The API access for bot users is restricted. The method you tried to invoke cannot be executed as a bot (caused by GetHistoryRequest)`
+- Telethon connected successfully
+- Channels configured correctly
+- Total Media: 0
+- Diagnostics shows: "Bot accounts cannot pull historical messages"
+
+**Root Cause:**
+Telegram API **does not allow bots** to fetch historical messages. This is a platform limitation, not a bug.
+
+**Solution: Generate and Use User Session**
+
+#### **Step 1: Generate User Session Locally**
+
+Create a Python script `generate_session.py`:
+
+```python
+from telethon import TelegramClient
+
+# Your API credentials (same as in Coolify)
+API_ID = 26694786  # Your actual API_ID
+API_HASH = "your_api_hash_here"  # Your actual API_HASH
+
+# Create client
+client = TelegramClient('telethon_session', API_ID, API_HASH)
+
+async def main():
+    await client.start()
+    print("✅ Session created successfully!")
+    print(f"Logged in as: {await client.get_me()}")
+    await client.disconnect()
+
+if __name__ == '__main__':
+    import asyncio
+    asyncio.run(main())
+```
+
+Run it:
+```bash
+pip install telethon
+python generate_session.py
+```
+
+**It will prompt for:**
+1. Phone number (with country code, e.g., +1234567890)
+2. Verification code (sent to your Telegram app)
+3. 2FA password (if enabled)
+
+**Result:** Creates `telethon_session.session` file
+
+#### **Step 2: Upload Session to Coolify**
+
+**Option A: Via Coolify Persistent Storage**
+1. In Coolify, go to your app → Storage
+2. Create persistent volume mounted to `/app`
+3. Upload `telethon_session.session` to the volume
+
+**Option B: Via Docker Volume**
+```bash
+# Copy session file to Coolify server
+scp telethon_session.session user@your-server:/path/to/volume/
+
+# Or use Coolify file manager
+```
+
+#### **Step 3: Update Environment Variables**
+
+In Coolify environment variables:
+1. **Remove** `TG_BOT_TOKEN` (or leave empty)
+2. **Keep** `TG_API_ID` and `TG_API_HASH`
+3. **Set** `TG_SESSION=telethon_session` (default)
+
+#### **Step 4: Redeploy**
+
+Click "Redeploy" in Coolify
+
+**Expected logs:**
+```
+INFO - Starting Telethon client with existing session...
+INFO - ✅ Telethon client connected successfully
+INFO - ✅ Logged in as: YourName (ID: 123456789)
+INFO - User account detected - pulling historical media
+INFO - Pulling historical media from channel: @channel
+INFO - Pulled 150 audio/PDF messages from @channel
+```
+
+#### **Verification:**
+
+1. Check diagnostics dashboard:
+   - Started: ✅ Yes
+   - Connected: ✅ Yes
+   - Client Type: User (not Bot)
+   - Total Media: > 0
+
+2. Go to Pending Media tab - should show files
+
+---
+
+### Scenario 6: Rate Limiting
 
 **Symptoms:**
 - Logs show: `FloodWaitError: A wait of X seconds is required`
 
 **Solution:**
-- Telegram is rate limiting your bot
+- Telegram is rate limiting your account
 - Wait the specified time
 - Reduce pull frequency
-- Consider using user account instead of bot
+- For bots: Switch to user account (has higher limits)
 
 ---
 

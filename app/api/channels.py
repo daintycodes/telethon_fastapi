@@ -20,6 +20,10 @@ class ChannelCreate(BaseModel):
     username: str
 
 
+class ChannelUpdate(BaseModel):
+    active: bool
+
+
 @router.post("/channels/")
 def add_channel(payload: ChannelCreate = Body(...), db: Session = Depends(get_db), _=Depends(require_admin)):
     """Add a new Telegram channel to monitor.
@@ -75,9 +79,10 @@ def delete_channel(channel_id: int, db: Session = Depends(get_db), _=Depends(req
     return {"status": "deactivated", "id": channel_id}
 
 @router.patch("/channels/{channel_id}")
-def toggle_channel(channel_id: int, active: bool, db: Session = Depends(get_db), _=Depends(require_admin)):
+def toggle_channel(channel_id: int, payload: ChannelUpdate = Body(...), db: Session = Depends(get_db), _=Depends(require_admin)):
     """Set channel active/inactive state.
     
+    Accepts JSON body: {"active": true/false}
     If channel is being activated, triggers media pull in background.
     """
     from fastapi import HTTPException
@@ -86,7 +91,7 @@ def toggle_channel(channel_id: int, active: bool, db: Session = Depends(get_db),
         raise HTTPException(status_code=404, detail="Channel not found")
     
     was_inactive = not channel.active
-    channel.active = bool(active)
+    channel.active = payload.active
     db.commit()
     db.refresh(channel)
     

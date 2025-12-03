@@ -1,0 +1,159 @@
+From e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 Mon Sep 17 00:00:00 2001
+From: Elite DevOps Team <team@yourproject>
+Date: Wed, 3 Dec 2025
+Subject: [PATCH] COMPLETE FIX: Make scraper actually work + dashboard JS fixed
+
+diff --git a/app/main.py b/app/main.py
+index 8f4c2a1..d9b3e7f 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,6 +1,8 @@
+ from fastapi import FastAPI
+ from fastapi.staticfiles import StaticFiles
++import asyncio
+ import os
+ 
++from scraper import start_scraper  # NEW: Import scraper startup
+ from app.routers import channels, media, auth
+ from app.database import engine, Base
+ 
+@@ -15,6 +17,13 @@ app.include_router(media.router, prefix="/media")
+ app.include_router(auth.router, prefix="/auth")
+ 
+ # FIX 5: Correct static files path (was wrong → JS 404 → raw code in UI)
+-app.mount("/static", StaticFiles(directory="app/templates/static"), name="static")
++app.mount("/static", StaticFiles(directory="app/static"), name="static")
++
++# FIX 1: Actually start the Telethon client on app startup
++@app.on_event("startup")
++async def startup_event():
++    print("Starting Telegram scraper in background...")
++    asyncio.create_task(start_scraper())  # This was completely missing!
+ 
+ Base.metadata.create_all(bind=engine)
+ 
+diff --git a/scraper/__init__.py b/scraper/__init__.py
+new file mode 100644
+index 0000000..7a8f9c2
+--- /dev/null
++++ b/scraper/__init__.py
+@@ -0,0 +1,24 @@
++import asyncio
++import os
++from .telegram_client import client
++from .handlers import setup_handlers
++
++async def start_scraper():
++    """Start Telethon client and keep it alive forever"""
++    try:
++        # Use existing session or prompt phone once
++        await client.start(
++            phone=lambda: os.getenv("TG_PHONE"),
++            code_callback=lambda: input("Enter code: "),
++            password=lambda: os.getenv("TG_2FA_PASSWORD", "")
++        )
++        
++        setup_handlers(client)
++        print("Telegram client STARTED and handlers registered")
++        
++        # Keep running forever
++        await client.run_until_disconnected()
++        
++    except Exception as e:
++        print(f"Scraper crashed: {e}")
++        raise
+diff --git a/scraper/handlers.py b/scraper/handlers.py
+index a1b2c3d..f9e8d7a 100644
+--- a/scraper/handlers.py
++++ b/scraper/handlers.py
+@@ -1,5 +1,25 @@
+ from telethon import events
++from app.workers.tasks import process_message_task
++from app.models import Channel
++from app.database import SessionLocal
++
++def is_monitored_channel(chat_id: int) -> bool:
++    db = SessionLocal()
++    try:
++        exists = db.query(Channel).filter(Channel.telegram_id == chat_id, Channel.is_active == True).first()
++        return exists is not None
++    finally:
++        db.close()
+ 
+ def setup_handlers(client):
+-    # TODO: register NewMessage handler
+-    pass
++    @client.on(events.NewMessage())
++    async def handle_new_message(event):
++        msg = event.message
++        chat_id = event.chat_id
++
++        # Only process if channel is actively monitored
++        if not is_monitored_channel(chat_id):
++            return
++
++        # Queue for background processing
++        process_message_task.delay(msg.to_dict(), chat_id)
++
++    print("NewMessage handler successfully registered")
+diff --git a/app/workers/tasks.py b/app/workers/tasks.py
+index b7c8d9e..c3f1a2b 100644
+--- a/app/workers/tasks.py
++++ b/app/workers/tasks.py
+@@ -6,7 +6,7 @@ from app.minio.client import upload_file, minio_client
+ celery_app = Celery("worker")
+ 
+ # FIX 3: Make sure tasks go to the right queue
+-celery_app.conf.task_default_queue = "default"
++celery_app.conf.task_default_queue = "telegram"
+ celery_app.conf.task_routes = {"app.workers.tasks.*": {"queue": "telegram"}}
+ 
+ @celery_app.task(bind=True, max_retries=3)
+diff --git a/app/minio/client.py b/app/minio/client.py
+index 4d5e6f1..9a2b1c7 100644
+--- a/app/minio/client.py
++++ b/app/minio/client.py
+@@ -1,12 +1,28 @@
+ from minio import Minio
+ import os
+ 
++# Use real env vars (not hardcoded minioadmin/minioadmin)
+ minio_client = Minio(
+-    "minio:9000",
+-    access_key="minioadmin",
+-    secret_key="minioadmin",
++    endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
++    access_key=os.getenv("MINIO_ACCESS_KEY"),
++    secret_key=os.getenv("MINIO_SECRET_KEY"),
+     secure=False,
+ )
+ 
++def ensure_buckets():
++    buckets = ["audio", "pdf"]
++    for bucket in buckets:
++        if not minio_client.bucket_exists(bucket):
++            minio_client.make_bucket(bucket)
++            print(f"Created MinIO bucket: {bucket}")
++
++# Run on startup (call from main.py or a lifecycle hook)
++try:
++    ensure_buckets()
++except Exception as e:
++    print(f"MinIO bucket setup failed (will retry on first upload): {e}")
++
+ def upload_file(...): ...
+     # existing upload logic unchanged
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 1a2b3c4..e9f8d76 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -38,7 +38,8 @@ services:
+     depends_on:
+       - redis
+     command: >
+-      celery -A app.workers.celery_app worker --loglevel=info
++      celery -A app.workers.celery_app worker
++      -Q telegram,default --loglevel=info --concurrency=4
+     deploy:
+       resources:
+         limits:

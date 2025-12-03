@@ -925,12 +925,20 @@
 
         // ============ Preview ============
         document.getElementById('previewBtn').addEventListener('click', async () => {
-            const channel = document.getElementById('previewChannel').value.trim();
+            let channel = document.getElementById('previewChannel').value.trim();
             const limit = document.getElementById('previewLimit').value || 20;
             
             if (!channel) {
                 alert('Please enter a channel username');
                 return;
+            }
+            
+            // Extract username if full URL provided (t.me/username or @username)
+            if (channel.includes('/')) {
+                channel = channel.split('/').pop();
+            }
+            if (!channel.startsWith('@')) {
+                channel = '@' + channel;
             }
             
             try {
@@ -993,16 +1001,17 @@
         function renderPagination(elementId, current, total, callback) {
             const el = document.getElementById(elementId);
             let html = '';
+            const callbackName = callback.name;
             
-            if (current > 1) html += `<button onclick="(${callback.toString()})(1)">First</button>`;
-            if (current > 1) html += `<button onclick="(${callback.toString()})(${current - 1})">Previous</button>`;
+            if (current > 1) html += `<button onclick="${callbackName}(1)">First</button>`;
+            if (current > 1) html += `<button onclick="${callbackName}(${current - 1})">Previous</button>`;
             
             for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
-                html += `<button class="${i === current ? 'active' : ''}" onclick="(${callback.toString()})(${i})">${i}</button>`;
+                html += `<button class="${i === current ? 'active' : ''}" onclick="${callbackName}(${i})">${i}</button>`;
             }
             
-            if (current < total) html += `<button onclick="(${callback.toString()})(${current + 1})">Next</button>`;
-            if (current < total) html += `<button onclick="(${callback.toString()})(${total})">Last</button>`;
+            if (current < total) html += `<button onclick="${callbackName}(${current + 1})">Next</button>`;
+            if (current < total) html += `<button onclick="${callbackName}(${total})">Last</button>`;
             
             el.innerHTML = html;
             if (total > 1) {

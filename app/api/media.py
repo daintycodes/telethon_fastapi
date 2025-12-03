@@ -13,6 +13,21 @@ import datetime
 router = APIRouter(prefix="/api", tags=["media"])
 
 
+@router.get("/media/pending")
+def list_pending_media(db: Session = Depends(get_db), _=Depends(require_admin)):
+    """List media files that are pending approval."""
+    items = crud.list_media(db, skip=0, limit=100, media_type=None, approved_only=False)
+    pending = [m for m in items if not m.approved]
+    return {"items": pending, "total": len(pending)}
+
+
+@router.get("/telegram/{channel_username}/messages")
+async def preview_telegram_messages(channel_username: str, limit: int = 20, _=Depends(require_admin)):
+    """Preview recent media messages from a Telegram channel (metadata only)."""
+    items = await telethon_client.fetch_recent_channel_messages(channel_username, limit=limit)
+    return {"channel": channel_username, "items": items}
+
+
 @router.get("/media/")
 def list_media(
     skip: int = Query(0, ge=0),
@@ -102,12 +117,6 @@ def get_download_url(
     return {"url": url, "expires_in": expiration}
 
 
-@router.get("/media/pending")
-def list_pending_media(db: Session = Depends(get_db), _=Depends(require_admin)):
-    """List media files that are pending approval."""
-    items = crud.list_media(db, skip=0, limit=100, media_type=None, approved_only=False)
-    pending = [m for m in items if not m.approved]
-    return {"items": pending, "total": len(pending)}
 
 
 @router.post("/media/{media_id}/approve")
@@ -142,14 +151,6 @@ async def approve_media(media_id: int, db: Session = Depends(get_db), _=Depends(
     db.commit()
     db.refresh(media)
     return media
-
-
-
-@router.get("/telegram/{channel_username}/messages")
-async def preview_telegram_messages(channel_username: str, limit: int = 20, _=Depends(require_admin)):
-    """Preview recent media messages from a Telegram channel (metadata only)."""
-    items = await telethon_client.fetch_recent_channel_messages(channel_username, limit=limit)
-    return {"channel": channel_username, "items": items}
 
 
 @router.get("/media/by-channel/{channel_username}")

@@ -43,11 +43,11 @@ def validate_channel_username(username: str) -> str:
     if not username.startswith("@"):
         username = f"@{username}"
     
-    # Validate format: @username (alphanumeric + underscore, 5-32 chars)
-    if not re.match(r"^@[a-zA-Z0-9_]{5,32}$", username):
+    # Validate format: @username (alphanumeric + underscore + hyphen, 5-32 chars)
+    if not re.match(r"^@[a-zA-Z0-9_-]{5,32}$", username):
         raise ValueError(
             f"Invalid channel username format: '{original}'. "
-            f"Must be 5-32 characters, alphanumeric and underscores only. "
+            f"Must be 5-32 characters, alphanumeric, underscores, and hyphens only. "
             f"Normalized to: '{username}'"
         )
     

@@ -17,7 +17,14 @@ if not API_HASH:
     )
 
 # Session file location - use /data to avoid conflict with /app volume mount
-SESSION_NAME = os.getenv("TG_SESSION", "/data/telethon_session")
+# Check if old session exists in /app and use it, otherwise use /data
+import os as _os_check
+_old_session = "telethon_session"
+_new_session = "/data/telethon_session"
+if _os_check.path.exists(f"{_old_session}.session") and not _os_check.path.exists(f"{_new_session}.session"):
+    SESSION_NAME = os.getenv("TG_SESSION", _old_session)
+else:
+    SESSION_NAME = os.getenv("TG_SESSION", _new_session)
 
 # Optional admin API key for protecting admin endpoints
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")

@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from .database import engine, SessionLocal
 from .models import Base
 from .api import channels, media
+from .api.diagnostics import router as diagnostics_router
 from .admin import router as admin_router
 from .auth_jwt import router as auth_router
 from .tasks import start_background_tasks, scheduler
@@ -77,6 +78,7 @@ app = FastAPI(lifespan=lifespan)
 # Include routers
 app.include_router(channels.router)
 app.include_router(media.router)
+app.include_router(diagnostics_router)
 app.include_router(admin_router)
 app.include_router(auth_router)
 

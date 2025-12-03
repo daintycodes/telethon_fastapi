@@ -9,9 +9,6 @@ from .crud import media_exists, save_media
 from .s3 import store_media
 from .database import SessionLocal
 
-import logging
-import os
-
 logger = logging.getLogger(__name__)
 
 client = TelegramClient(SESSION_NAME, API_ID, API_HASH)

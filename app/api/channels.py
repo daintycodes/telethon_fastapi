@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from .. import crud, models
 from ..database import get_db
 from ..auth import require_admin
-from ..telethon_client import pull_all_channel_media
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +99,8 @@ async def add_channel(
     
     # Trigger background media pull for this new channel
     try:
+        from ..telethon_client import pull_all_channel_media
+        
         if background_tasks:
             background_tasks.add_task(pull_all_channel_media)
         else:
@@ -108,6 +109,8 @@ async def add_channel(
             # Store reference to prevent garbage collection
             asyncio.ensure_future(task)
         logger.info(f"Triggered media pull for new channel: {username}")
+    except ImportError as ie:
+        logger.error(f"Cannot import telethon_client: {ie}")
     except Exception as e:
         logger.error(f"Failed to trigger media pull for {username}: {e}")
     
@@ -170,6 +173,8 @@ async def toggle_channel(
     # If reactivating, trigger media pull
     if was_inactive and channel.active:
         try:
+            from ..telethon_client import pull_all_channel_media
+            
             if background_tasks:
                 background_tasks.add_task(pull_all_channel_media)
             else:
@@ -177,6 +182,8 @@ async def toggle_channel(
                 task = asyncio.create_task(pull_all_channel_media())
                 asyncio.ensure_future(task)
             logger.info(f"Channel {channel.username} reactivated, triggering media pull")
+        except ImportError as ie:
+            logger.error(f"Cannot import telethon_client: {ie}")
         except Exception as e:
             logger.error(f"Failed to trigger media pull for {channel.username}: {e}")
     

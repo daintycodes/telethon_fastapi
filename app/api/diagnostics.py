@@ -6,8 +6,17 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..auth import require_admin
-from ..telethon_client import client, _client_started, _last_startup_error, pull_all_channel_media
 from .. import crud, models
+
+# Import telethon client components - may fail if config is invalid
+try:
+    from ..telethon_client import client, _client_started, _last_startup_error, pull_all_channel_media
+except Exception as import_error:
+    # If telethon_client fails to import, create dummy values
+    client = None
+    _client_started = False
+    _last_startup_error = f"Failed to import telethon_client: {import_error}"
+    pull_all_channel_media = None
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +30,20 @@ async def get_system_status(db: Session = Depends(get_db), _=Depends(require_adm
     # Telethon status
     is_user = None
     is_bot = None
-    if _client_started and client.is_connected():
-        try:
-            is_user = await client.is_user()
-            is_bot = await client.is_bot()
-        except Exception as e:
-            logger.warning(f"Could not determine client type: {e}")
+    is_connected = False
+    
+    if client is not None:
+        is_connected = client.is_connected() if _client_started else False
+        if _client_started and is_connected:
+            try:
+                is_user = await client.is_user()
+                is_bot = await client.is_bot()
+            except Exception as e:
+                logger.warning(f"Could not determine client type: {e}")
     
     telethon_status = {
         "started": _client_started,
-        "connected": client.is_connected() if _client_started else False,
+        "connected": is_connected,
         "is_user": is_user,
         "is_bot": is_bot,
         "last_error": _last_startup_error,
@@ -132,7 +145,14 @@ async def trigger_media_pull(
 ):
     """Manually trigger media pull from all active channels."""
     
-    # Check if client is connected
+    # Check if client exists and is connected
+    if client is None or pull_all_channel_media is None:
+        return {
+            "success": False,
+            "error": "Telethon client not available",
+            "message": f"Cannot pull media: Telethon client failed to initialize. Error: {_last_startup_error}"
+        }
+    
     if not _client_started or not client.is_connected():
         return {
             "success": False,

@@ -86,16 +86,25 @@ app.include_router(auth_router)
 @app.get("/health")
 async def health_check():
     """Health check endpoint with Telethon client status."""
-    from .telethon_client import client, _client_started
-    
-    telethon_status = "disconnected"
-    if _client_started and client.is_connected():
-        telethon_status = "connected"
-    elif _client_started:
-        telethon_status = "started_but_disconnected"
-    
-    return {
-        "status": "healthy",
-        "telethon_client": telethon_status,
-        "telethon_connected": client.is_connected() if _client_started else False
-    }
+    try:
+        from .telethon_client import client, _client_started
+        
+        telethon_status = "disconnected"
+        if _client_started and client.is_connected():
+            telethon_status = "connected"
+        elif _client_started:
+            telethon_status = "started_but_disconnected"
+        
+        return {
+            "status": "healthy",
+            "telethon_client": telethon_status,
+            "telethon_connected": client.is_connected() if _client_started else False
+        }
+    except Exception as e:
+        # If telethon_client fails to import, still return healthy but show error
+        return {
+            "status": "healthy",
+            "telethon_client": "import_failed",
+            "telethon_connected": False,
+            "telethon_error": str(e)
+        }

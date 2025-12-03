@@ -16,7 +16,8 @@ if not API_HASH:
         "Set via TG_API_HASH environment variable."
     )
 
-SESSION_NAME = os.getenv("TG_SESSION", "telethon_session")
+# Session file location - use /data to avoid conflict with /app volume mount
+SESSION_NAME = os.getenv("TG_SESSION", "/data/telethon_session")
 
 # Optional admin API key for protecting admin endpoints
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")

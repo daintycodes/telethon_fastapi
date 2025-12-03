@@ -1,7 +1,11 @@
 FROM python:3.12-slim
 
-# Version: 2024-12-03-v3 (fix entrypoint path)
+# Version: 2024-12-03-v4 (fix volume mount conflict)
 WORKDIR /app
+
+# Create /data directory for persistent files (session, db)
+# This avoids conflict with Coolify mounting volumes at /app
+RUN mkdir -p /data && chmod 777 /data
 
 # Install dependencies
 COPY requirements.txt .

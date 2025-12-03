@@ -103,9 +103,10 @@ async def pull_all_channel_media():
     try:
         channels = get_all_channels(db, active_only=True)
         for channel in channels:
-            logger.info(f"Pulling historical media from channel: {channel.channel_username}")
+            # Channel model uses `username` field
+            logger.info(f"Pulling historical media from channel: {channel.username}")
             try:
-                entity = await client.get_entity(channel.channel_username)
+                entity = await client.get_entity(channel.username)
                 # Fetch ALL messages from this channel (no limit)
                 messages = await client.get_messages(entity, limit=None)
                 
@@ -123,16 +124,16 @@ async def pull_all_channel_media():
                             save_media(
                                 db,
                                 message_id=msg.id,
-                                channel_username=channel.channel_username,
+                                channel_username=channel.username,
                                 file_name=suggested_name or f"message_{msg.id}",
                                 file_type=media_type,
                                 s3_key=None,
                             )
                             media_count += 1
                 
-                logger.info(f"Pulled {media_count} audio/PDF messages from {channel.channel_username}")
+                logger.info(f"Pulled {media_count} audio/PDF messages from {channel.username}")
             except Exception as e:
-                logger.error(f"Error pulling media from {channel.channel_username}: {e}")
+                logger.error(f"Error pulling media from {channel.username}: {e}")
     finally:
         db.close()
     

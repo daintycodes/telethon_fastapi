@@ -90,11 +90,12 @@ async def start_client():
         else:
             if os.path.exists(session_file):
                 logger.info("Starting Telethon client with existing session...")
-                # Use phone callback that returns None to prevent interactive prompts
-                # If session is invalid, this will fail gracefully
+                # Start without phone parameter - session file should handle authentication
+                # If session is valid, no phone will be needed
+                # If session is invalid, it will raise an error
                 try:
-                    await client.start(phone=lambda: None)
-                except EOFError:
+                    await client.start()
+                except EOFError as eof_error:
                     error_msg = (
                         f"Session file exists at {session_file} but is invalid or incomplete. "
                         "The session may have been created with different API_ID/API_HASH, "
@@ -104,7 +105,16 @@ async def start_client():
                     )
                     logger.error(error_msg)
                     _last_startup_error = error_msg
-                    raise ValueError(error_msg)
+                    raise ValueError(error_msg) from eof_error
+                except TypeError as type_error:
+                    # This can happen if session is corrupted
+                    error_msg = (
+                        f"Session file at {session_file} appears to be corrupted or incompatible. "
+                        f"Error: {type_error}. Please regenerate the session file."
+                    )
+                    logger.error(error_msg)
+                    _last_startup_error = error_msg
+                    raise ValueError(error_msg) from type_error
             else:
                 error_msg = (
                     f"No TG_BOT_TOKEN and no session file found at {session_file}. "

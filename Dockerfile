@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 
+# Version: 2024-12-03-v2 (force rebuild)
 WORKDIR /app
 
 # Install dependencies

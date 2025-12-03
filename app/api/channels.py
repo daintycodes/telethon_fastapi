@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, BackgroundTasks
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -25,7 +25,12 @@ class ChannelUpdate(BaseModel):
 
 
 @router.post("/channels/")
-def add_channel(payload: ChannelCreate = Body(...), db: Session = Depends(get_db), _=Depends(require_admin)):
+async def add_channel(
+    payload: ChannelCreate = Body(...),
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin)
+):
     """Add a new Telegram channel to monitor.
     
     Accepts JSON body: {"username": "@channel"}
@@ -40,7 +45,13 @@ def add_channel(payload: ChannelCreate = Body(...), db: Session = Depends(get_db
     
     # Trigger background media pull for this new channel
     try:
-        asyncio.create_task(pull_all_channel_media())
+        if background_tasks:
+            background_tasks.add_task(pull_all_channel_media)
+        else:
+            # Fallback: create task with proper reference
+            task = asyncio.create_task(pull_all_channel_media())
+            # Store reference to prevent garbage collection
+            asyncio.ensure_future(task)
         logger.info(f"Triggered media pull for new channel: {username}")
     except Exception as e:
         logger.error(f"Failed to trigger media pull for {username}: {e}")
@@ -79,7 +90,13 @@ def delete_channel(channel_id: int, db: Session = Depends(get_db), _=Depends(req
     return {"status": "deactivated", "id": channel_id}
 
 @router.patch("/channels/{channel_id}")
-def toggle_channel(channel_id: int, payload: ChannelUpdate = Body(...), db: Session = Depends(get_db), _=Depends(require_admin)):
+async def toggle_channel(
+    channel_id: int,
+    payload: ChannelUpdate = Body(...),
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin)
+):
     """Set channel active/inactive state.
     
     Accepts JSON body: {"active": true/false}
@@ -98,7 +115,12 @@ def toggle_channel(channel_id: int, payload: ChannelUpdate = Body(...), db: Sess
     # If reactivating, trigger media pull
     if was_inactive and channel.active:
         try:
-            asyncio.create_task(pull_all_channel_media())
+            if background_tasks:
+                background_tasks.add_task(pull_all_channel_media)
+            else:
+                # Fallback: create task with proper reference
+                task = asyncio.create_task(pull_all_channel_media())
+                asyncio.ensure_future(task)
             logger.info(f"Channel {channel.username} reactivated, triggering media pull")
         except Exception as e:
             logger.error(f"Failed to trigger media pull for {channel.username}: {e}")

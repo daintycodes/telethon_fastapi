@@ -16,11 +16,12 @@ logger = logging.getLogger(__name__)
 
 client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
 _handlers_registered = False
+_client_started = False
 
 
 async def start_client():
     """Start Telethon client, pull historical media, and register event handlers (once per process)."""
-    global _handlers_registered
+    global _handlers_registered, _client_started
     
     # Avoid interactive prompts in non-interactive containers.
     # If a bot token is provided via env var `TG_BOT_TOKEN` (or `TELEGRAM_BOT_TOKEN`), use it.
@@ -28,27 +29,42 @@ async def start_client():
     bot_token = os.getenv("TG_BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
     session_file = f"{SESSION_NAME}.session"
 
-    if bot_token:
-        await client.start(bot_token=bot_token)
-    else:
-        if os.path.exists(session_file):
-            await client.start()
+    try:
+        if bot_token:
+            logger.info("Starting Telethon client with bot token...")
+            await client.start(bot_token=bot_token)
         else:
-            logger.error(
-                "No TG_BOT_TOKEN and no existing Telethon session file found. "
-                "Skipping Telethon client start to avoid interactive prompt. "
-                "Provide a bot token via TG_BOT_TOKEN or mount a session file."
-            )
-            return
-    
-    if not _handlers_registered:
-        register_handlers()
-        _handlers_registered = True
+            if os.path.exists(session_file):
+                logger.info("Starting Telethon client with existing session...")
+                await client.start()
+            else:
+                logger.error(
+                    "No TG_BOT_TOKEN and no existing Telethon session file found. "
+                    "Skipping Telethon client start to avoid interactive prompt. "
+                    "Provide a bot token via TG_BOT_TOKEN or mount a session file."
+                )
+                return
         
-        # Pull all historical audio/pdf messages from all active channels
-        await pull_all_channel_media()
-    
-    logger.info("Telethon client started and handlers registered")
+        # Verify connection
+        if not client.is_connected():
+            logger.error("Telethon client failed to connect")
+            return
+        
+        _client_started = True
+        logger.info("Telethon client connected successfully")
+        
+        if not _handlers_registered:
+            register_handlers()
+            _handlers_registered = True
+            logger.info("Event handlers registered")
+            
+            # Pull all historical audio/pdf messages from all active channels
+            await pull_all_channel_media()
+        
+        logger.info("Telethon client started and handlers registered")
+    except Exception as e:
+        logger.error(f"Failed to start Telethon client: {e}", exc_info=True)
+        _client_started = False
 
 
 def register_handlers():
@@ -94,46 +110,81 @@ def register_handlers():
             logger.error(f"Error in message handler: {e}")
 
 
+async def ensure_client_connected():
+    """Ensure Telethon client is connected, reconnect if needed."""
+    global _client_started
+    
+    if not _client_started or not client.is_connected():
+        logger.warning("Telethon client not connected, attempting to reconnect...")
+        await start_client()
+    
+    if not client.is_connected():
+        raise RuntimeError("Telethon client is not connected")
+
+
 async def pull_all_channel_media():
     """Pull all historical audio and PDF messages from all active channels on startup."""
     from .crud import get_all_channels
+    
+    # Ensure client is connected
+    try:
+        await ensure_client_connected()
+    except Exception as e:
+        logger.error(f"Cannot pull media: {e}")
+        return
     
     logger.info("Starting historical media pull from all active channels...")
     db = SessionLocal()
     try:
         channels = get_all_channels(db, active_only=True)
+        if not channels:
+            logger.info("No active channels found to pull media from")
+            return
+        
         for channel in channels:
             # Channel model uses `username` field
             logger.info(f"Pulling historical media from channel: {channel.username}")
-            try:
-                entity = await client.get_entity(channel.username)
-                # Fetch ALL messages from this channel (no limit)
-                messages = await client.get_messages(entity, limit=None)
-                
-                media_count = 0
-                for msg in messages:
-                    if msg.file:
-                        media_type = None
-                        if msg.file.mime_type in ["audio/mpeg", "audio/ogg"]:
-                            media_type = "audio"
-                        elif msg.file.mime_type == "application/pdf":
-                            media_type = "pdf"
-                        
-                        if media_type and not media_exists(db, msg.id):
-                            suggested_name = getattr(msg.file, "name", None)
-                            save_media(
-                                db,
-                                message_id=msg.id,
-                                channel_username=channel.username,
-                                file_name=suggested_name or f"message_{msg.id}",
-                                file_type=media_type,
-                                s3_key=None,
-                            )
-                            media_count += 1
-                
-                logger.info(f"Pulled {media_count} audio/PDF messages from {channel.username}")
-            except Exception as e:
-                logger.error(f"Error pulling media from {channel.username}: {e}")
+            max_retries = 3
+            retry_count = 0
+            
+            while retry_count < max_retries:
+                try:
+                    entity = await client.get_entity(channel.username)
+                    # Fetch ALL messages from this channel (no limit)
+                    messages = await client.get_messages(entity, limit=None)
+                    
+                    media_count = 0
+                    for msg in messages:
+                        if msg.file:
+                            media_type = None
+                            if msg.file.mime_type in ["audio/mpeg", "audio/ogg"]:
+                                media_type = "audio"
+                            elif msg.file.mime_type == "application/pdf":
+                                media_type = "pdf"
+                            
+                            if media_type and not media_exists(db, msg.id):
+                                suggested_name = getattr(msg.file, "name", None)
+                                save_media(
+                                    db,
+                                    message_id=msg.id,
+                                    channel_username=channel.username,
+                                    file_name=suggested_name or f"message_{msg.id}",
+                                    file_type=media_type,
+                                    s3_key=None,
+                                )
+                                media_count += 1
+                    
+                    logger.info(f"Pulled {media_count} audio/PDF messages from {channel.username}")
+                    break  # Success, exit retry loop
+                    
+                except Exception as e:
+                    retry_count += 1
+                    logger.error(f"Error pulling media from {channel.username} (attempt {retry_count}/{max_retries}): {e}")
+                    if retry_count < max_retries:
+                        import asyncio
+                        await asyncio.sleep(5)  # Wait before retry
+                    else:
+                        logger.error(f"Failed to pull media from {channel.username} after {max_retries} attempts")
     finally:
         db.close()
     
@@ -145,6 +196,13 @@ async def fetch_recent_channel_messages(channel_username: str, limit: int = 20):
 
     Returns a list of dicts with message_id, date, file_name, mime_type, file_size, and text.
     """
+    # Ensure client is connected
+    try:
+        await ensure_client_connected()
+    except Exception as e:
+        logger.error(f"Cannot fetch messages: {e}")
+        return []
+    
     result = []
     try:
         entity = await client.get_entity(channel_username)
@@ -168,6 +226,13 @@ async def fetch_recent_channel_messages(channel_username: str, limit: int = 20):
 
 async def download_and_store_media(message_id: int, channel_username: str = None):
     """Download a media message by ID and upload to S3. Returns s3_key or raises."""
+    # Ensure client is connected
+    try:
+        await ensure_client_connected()
+    except Exception as e:
+        logger.error(f"Cannot download media: {e}")
+        raise
+    
     # Fetch the message either by id and channel or search recent
     try:
         if channel_username:
